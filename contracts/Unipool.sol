@@ -1,14 +1,12 @@
 pragma solidity ^0.5.0;
 
-import "@openzeppelin/contracts/math/Math.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/ownership/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "../node_modules/@openzeppelin/contracts/math/Math.sol";
+import "../node_modules/@openzeppelin/contracts/math/SafeMath.sol";
+import "../node_modules/@openzeppelin/contracts/ownership/Ownable.sol";
+import "../node_modules/@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "./IRewardDistributionRecipient.sol";
 
-
 contract LPTokenWrapper {
-
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -17,11 +15,11 @@ contract LPTokenWrapper {
     uint256 private _totalSupply;
     mapping(address => uint256) private _balances;
 
-    function totalSupply() public view returns(uint256) {
+    function totalSupply() public view returns (uint256) {
         return _totalSupply;
     }
 
-    function balanceOf(address account) public view returns(uint256) {
+    function balanceOf(address account) public view returns (uint256) {
         return _balances[account];
     }
 
@@ -38,9 +36,7 @@ contract LPTokenWrapper {
     }
 }
 
-
 contract Unipool is LPTokenWrapper, IRewardDistributionRecipient {
-
     IERC20 public snx = IERC20(0xC011a73ee8576Fb46F5E1c5751cA3B9Fe0af2a6F);
 
     uint256 public periodFinish = 0;
@@ -65,23 +61,28 @@ contract Unipool is LPTokenWrapper, IRewardDistributionRecipient {
         _;
     }
 
-    function lastTimeRewardApplicable() public view returns(uint256) {
+    function lastTimeRewardApplicable() public view returns (uint256) {
         return Math.min(block.timestamp, periodFinish);
     }
 
-    function rewardPerToken() public view returns(uint256) {
+    function rewardPerToken() public view returns (uint256) {
         if (totalSupply() == 0) {
             return rewardPerTokenStored;
         }
-        return rewardPerTokenStored.add(
-            lastTimeRewardApplicable().sub(lastUpdateTime)).mul(rewardRate).mul(1e18).div(totalSupply()
-        );
+        return
+            rewardPerTokenStored
+                .add(lastTimeRewardApplicable().sub(lastUpdateTime))
+                .mul(rewardRate)
+                .mul(1e18)
+                .div(totalSupply());
     }
 
-    function earned(address account) public view returns(uint256) {
-        return balanceOf(account).mul(
-            rewardPerToken().sub(userRewardPerTokenPaid[account])
-        ).div(1e18).add(rewards[account]);
+    function earned(address account) public view returns (uint256) {
+        return
+            balanceOf(account)
+                .mul(rewardPerToken().sub(userRewardPerTokenPaid[account]))
+                .div(1e18)
+                .add(rewards[account]);
     }
 
     function stake(uint256 amount) public updateReward(msg.sender) {
@@ -109,7 +110,11 @@ contract Unipool is LPTokenWrapper, IRewardDistributionRecipient {
     }
 
     // Duration is the time diff from (now  - when snx rewards will be mintable again) to handle slippage in minting
-    function notifyRewardAmount(uint256 reward, uint256 duration) external onlyRewardDistribution updateReward(address(0)) {
+    function notifyRewardAmount(uint256 reward, uint256 duration)
+        external
+        onlyRewardDistribution
+        updateReward(address(0))
+    {
         if (block.timestamp >= periodFinish) {
             periodFinish = block.timestamp.add(duration);
             rewardRate = reward.div(duration);

@@ -4,10 +4,10 @@ module.exports = {
   networks: {
     development: {
       host: 'localhost',
-      port: 9545,
+      port: 8545,
       network_id: '*',
-      gas: 8000000,
-      gasPrice: 1000000000, // web3.eth.gasPrice
+      // gas: 8000000,
+      // gasPrice: 1000000000, // web3.eth.gasPrice
     },
     coverage: {
       host: 'localhost',
@@ -19,18 +19,18 @@ module.exports = {
   },
   compilers: {
     solc: {
-      version: '0.5.12',
+      version: '0.5.16',
       settings: {
         optimizer: {
           enabled: true,
-          runs: 200,
+          runs: 500,
         }
       }
     },
   },
   mocha: { // https://github.com/cgewecke/eth-gas-reporter
     reporter: 'eth-gas-reporter',
-    reporterOptions : {
+    reporterOptions: {
       currency: 'USD',
       gasPrice: 10,
       onlyCalledMethods: true,
