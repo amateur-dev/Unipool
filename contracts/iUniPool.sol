@@ -31,8 +31,6 @@ contract iUniPool {
 
     // events
     event LPTokensStaked(address indexed staker, uint256 qtyStaked);
-    event ERC20Issued(uint256 qtyIssued);
-    event ERC20burned(uint256 qtyBurned);
     event LPTokensWithdrawn(address indexed leaver, uint256 qtyWithdrawn);
     event Approval(address indexed src, address indexed guy, uint256 wad);
     event Transfer(address indexed src, address indexed dst, uint256 wad);
@@ -90,20 +88,6 @@ contract iUniPool {
             (_LPTokenUints >= 1000000000),
             "Minimum 1 Gwei LP Tokens required"
         );
-        // @dev not required as there will be a gas wastage where the user has done this correctly
-        // require(
-        //     (UniswapLiquityTokenAddress.balanceOf(msg.sender) >=
-        //         _LPTokenUints &&
-        //         SNXTokenAddress.balanceOf(msg.sender) >= _SNXtokenUints),
-        //     "user balance less than qty requested for staking"
-        // );
-        // require(
-        //     (UniswapLiquityTokenAddress.allowance(msg.sender, address(this)) >=
-        //         _LPTokenUints &&
-        //         SNXTokenAddress.allowance(msg.sender, address(this)) >=
-        //         _SNXtokenUints),
-        //     "Allowance not sufficient"
-        // );
 
         uint256 SNXReq = getSNXRequiredPer_GweiLPT();
         // transfer to this address
