@@ -49,32 +49,28 @@ contract iUniPool {
 
     }
 
-    function getBalance(address _ofWhose) public view returns (uint256) {
-        return Unipool(UnipoolAddress).balanceOf(address(_ofWhose));
+    function howMuchHasThisContractStaked()
+        external
+        view
+        returns (uint256 LPTokens)
+    {
+        return Unipool(UnipoolAddress).balanceOf(address(this));
     }
 
-    // function getBalance() public view returns(uint256) {
-    //     return Unipool(UnipoolAddress).balanceOf(address(this));
-    // }
-
-    function getRewardOUT() internal returns (uint256) {
-        Unipool(UnipoolAddress).getReward();
-    }
-
-    function howMuchHaveIEarned() public view returns (uint256) {
+    function howMuchHasThisContractEarned()
+        external
+        view
+        returns (uint256 SNXEarned)
+    {
         return Unipool(UnipoolAddress).earned(address(this));
     }
 
-    // function getReward() public view returns (uint256) {
-    //     return Unipool(UnipoolAddress).earned(address(this));
-    // }
-
-    function getMyShareOfLPTokens(address _ofWhose)
-        public
+    function thisContractsWealth()
+        external
         view
-        returns (uint256)
+        returns (uint256 LPTokens, uint256 SNXbalance)
     {
-        return LPTokensSupplied[_ofWhose];
+        (LPTokens, SNXbalance) = CurrentWealth();
     }
 
     function stakeMyShare(uint256 _LPTokenUints, uint256 _SNXtokenUints)
@@ -108,14 +104,13 @@ contract iUniPool {
         //         _SNXtokenUints),
         //     "Allowance not sufficient"
         // );
-        
-        uint SNXReq = getSNXRequiredPer_Gwei();
+
+        uint256 SNXReq = getSNXRequiredPer_GweiLPT();
         // transfer to this address
         require(
-            transferToSelf(_LPTokenUints, _SNXReq),
+            transferToSelf(_LPTokenUints, SNXReq),
             "issue in trf tokens to self"
         );
-        
 
         // staking the LP Tokens
         uint256 newtotalLPTokensStaked = SafeMath.add(
@@ -137,7 +132,7 @@ contract iUniPool {
 
         // updating the in contract varaible for the number of uints staked
         totalLPTokensStaked = newtotalLPTokensStaked;
-
+        //@DIPESH to work on mint() function
         // updating the user's balances for the tokens issued
         balanceOf[msg.sender] = balanceOf[msg.sender].add(_LPTokenUints);
 
@@ -150,24 +145,17 @@ contract iUniPool {
     //@notice: adding buffer only for validation checks
     function validateIncomingTokenValues(uint256 LPT, uint256 SNXT)
         internal
+        view
         returns (bool)
     {
-        require(
-            (
-                SafeMath.mul(
-                    SafeMath.div(LPT, 1000000000),
-                    getSNXRequiredPer_GweiLT()
-                )
-            ) ==
-                (SafeMath.div(SafeMath.mul(SNXT, 120), 100))
-        );
-        return (true)
+        require((quotePrice(LPT)) == SNXT);
+        return (true);
     }
 
     // @notice in the situation where the SNX rewards fall terribly low, compared the LPtokens, the SNX Token wealth per LP token staked will be rounded down to zero using SafeMath
     // @notice hence the compuation below returns the value of the SNX requried per Gwei LP Token
     // @notice the minimum required to enter this contract is also 1 GweiLP Token
-    function getSNXRequiredPer_GweiLT() internal returns (uint256) {
+    function getSNXRequiredPer_GweiLPT() internal view returns (uint256) {
         (uint256 LPTWealth, uint256 SNXTWealth) = CurrentWealth();
         return ((SNXTWealth.mul(1000000000)).div(LPTWealth));
     }
@@ -178,44 +166,64 @@ contract iUniPool {
         return (true);
     }
 
-    function getMyStakeOut(uint256 _LPTokenUintsWithdrawing) public {
+    function quotePrice(uint256 _proposedLPTokens)
+        public
+        view
+        returns (uint256 SNXTokensRequired_Per_GweiLPT)
+    {
+        return (
+            SafeMath.mul(
+                SafeMath.div(_proposedLPTokens, 1000000000),
+                ((SafeMath.mul(getSNXRequiredPer_GweiLPT(), 120).div(100)))
+            )
+        );
+    }
+
+    function getMyStakeOut(uint256 _DZSLTUintsWithdrawing) public {
         // basic check
         require(
             (UniswapLiquityTokenAddress.balanceOf(address(this)) == 0),
             "issue:contract is holding some LP Tokens"
         );
+        // checking if the user has already provided number of uints
+        uint256 LPTOut = _DZSLTUintsWithdrawing;
         require(
-            (LPTokensSupplied[msg.sender]) >= _LPTokenUintsWithdrawing,
+            (LPTokensSupplied[msg.sender]) >= LPTOut &&
+                balanceOf[msg.sender] >= _DZSLTUintsWithdrawing,
             "Withdrawing qty more than staked qty"
         );
+        // updating the internal mapping to reduce user's qty staked
         LPTokensSupplied[msg.sender] = SafeMath.sub(
             LPTokensSupplied[msg.sender],
-            _LPTokenUintsWithdrawing
+            LPTOut
         );
         // updating the in contract varaible for the number of uints staked
-        totalLPTokensStaked = SafeMath.sub(
-            totalLPTokensStaked,
-            _LPTokenUintsWithdrawing
-        );
-        Unipool(UnipoolAddress).exit();
+        totalLPTokensStaked = SafeMath.sub(totalLPTokensStaked, LPTOut);
+        // getting the wealth and price
+        uint256 SNX_perGweiLPT = getSNXRequiredPer_GweiLPT();
+        uint256 LPTinGwei = SafeMath.div(LPTOut, 1000000000);
+        uint256 SNX2beDistributed = SafeMath.mul(SNX_perGweiLPT, LPTinGwei);
+
+        // transferring the LPTokensFirst
+        Unipool(UnipoolAddress).withdraw(LPTOut);
         require(
-            (UniswapLiquityTokenAddress.balanceOf(address(this)) ==
-                _LPTokenUintsWithdrawing),
-            "issue in staking out the LP Token Shares"
+            (UniswapLiquityTokenAddress.balanceOf(address(this))) >= LPTOut,
+            "issue in LPTokenBalances"
         );
-        require(
-            (
-                UniswapLiquityTokenAddress.transfer(
-                    msg.sender,
-                    _LPTokenUintsWithdrawing
-                )
-            ),
-            "issue in transferring out the LP Tokens"
-        );
-        require(
-            (SNXTokenAddress.transfer(msg.sender, _LPTokenUintsWithdrawing)),
-            "issue in transferring out the LP Tokens"
-        );
+        UniswapLiquityTokenAddress.transfer(msg.sender, LPTOut);
+
+        if ((SNXTokenAddress.balanceOf(address(this))) >= SNX2beDistributed) {
+            SNXTokenAddress.transfer(msg.sender, SNX2beDistributed);
+        } else {
+            Unipool(UnipoolAddress).getReward();
+            require(
+                (SNXTokenAddress.balanceOf(address(this)) >= SNX2beDistributed),
+                "issue in reconciling the SNX holdigs and rewards"
+            );
+            SNXTokenAddress.transfer(msg.sender, SNX2beDistributed);
+        }
+
+        //@DIPESH to work on the burn() function
 
     }
 
