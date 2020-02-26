@@ -248,7 +248,7 @@ contract iUniPool {
         emit Transfer(address(0), account, amount);
     }
 
-    function _burn(address account, uint256 amount) internal {
+    function burn(address account, uint256 amount) internal {
         require(account != address(0), "ERC20: burn from the zero address");
         _beforeTokenTransfer(account, address(0), amount);
         balanceOf[account] = balanceOf[account].sub(
