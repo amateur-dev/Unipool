@@ -92,32 +92,31 @@ contract iUniPool {
         );
         require(
             (_LPTokenUints >= 1000000000),
-            "less than the minimum required"
+            "Minimum 1 Gwei LP Tokens required"
         );
-        require(
-            (UniswapLiquityTokenAddress.balanceOf(msg.sender) >=
-                _LPTokenUints &&
-                SNXTokenAddress.balanceOf(msg.sender) >= _SNXtokenUints),
-            "user balance less than qty requested for staking"
-        );
-        require(
-            (UniswapLiquityTokenAddress.allowance(msg.sender, address(this)) >=
-                _LPTokenUints &&
-                SNXTokenAddress.allowance(msg.sender, address(this)) >=
-                _SNXtokenUints),
-            "Allowance not sufficient"
-        );
-
+        // @dev not required as there will be a gas wastage where the user has done this correctly
+        // require(
+        //     (UniswapLiquityTokenAddress.balanceOf(msg.sender) >=
+        //         _LPTokenUints &&
+        //         SNXTokenAddress.balanceOf(msg.sender) >= _SNXtokenUints),
+        //     "user balance less than qty requested for staking"
+        // );
+        // require(
+        //     (UniswapLiquityTokenAddress.allowance(msg.sender, address(this)) >=
+        //         _LPTokenUints &&
+        //         SNXTokenAddress.allowance(msg.sender, address(this)) >=
+        //         _SNXtokenUints),
+        //     "Allowance not sufficient"
+        // );
+        
+        uint SNXReq = getSNXRequiredPer_Gwei();
         // transfer to this address
         require(
-            transferToSelf(_LPTokenUints, _SNXtokenUints),
+            transferToSelf(_LPTokenUints, _SNXReq),
             "issue in trf tokens to self"
         );
-        // updating the internal mapping
-        LPTokensSupplied[msg.sender] = SafeMath.add(
-            LPTokensSupplied[msg.sender],
-            _LPTokenUints
-        );
+        
+
         // staking the LP Tokens
         uint256 newtotalLPTokensStaked = SafeMath.add(
             totalLPTokensStaked,
@@ -129,6 +128,11 @@ contract iUniPool {
             (Unipool(UnipoolAddress).balanceOf(address(this)) ==
                 newtotalLPTokensStaked),
             "issue in reconciling the LP uints staked"
+        );
+        // updating the internal mapping
+        LPTokensSupplied[msg.sender] = SafeMath.add(
+            LPTokensSupplied[msg.sender],
+            _LPTokenUints
         );
 
         // updating the in contract varaible for the number of uints staked
@@ -143,21 +147,29 @@ contract iUniPool {
         return (true);
     }
 
-    function xxxx(uint256 LPT, uint256 SNXT) internal returns (bool) {
-        uint256 SNXRequiredPerDZSLT_inGWei = getSNXRequiredPerLT_inGWei();
+    //@notice: adding buffer only for validation checks
+    function validateIncomingTokenValues(uint256 LPT, uint256 SNXT)
+        internal
+        returns (bool)
+    {
         require(
             (
-                SafeMath.mul(SafeMath.div(LPT, 1000000000)),
-                SNXRequiredPerDZSLT_inGWei
+                SafeMath.mul(
+                    SafeMath.div(LPT, 1000000000),
+                    getSNXRequiredPer_GweiLT()
+                )
             ) ==
-                (SafeMath.div(SNXT, 1000000000))
+                (SafeMath.div(SafeMath.mul(SNXT, 120), 100))
         );
+        return (true)
     }
 
-    function getSNXRequiredPerLT_inGWei() internal returns (uint256) {
+    // @notice in the situation where the SNX rewards fall terribly low, compared the LPtokens, the SNX Token wealth per LP token staked will be rounded down to zero using SafeMath
+    // @notice hence the compuation below returns the value of the SNX requried per Gwei LP Token
+    // @notice the minimum required to enter this contract is also 1 GweiLP Token
+    function getSNXRequiredPer_GweiLT() internal returns (uint256) {
         (uint256 LPTWealth, uint256 SNXTWealth) = CurrentWealth();
-        return ((SNXTWealth / LPTWealth) / 1000000000);
-
+        return ((SNXTWealth.mul(1000000000)).div(LPTWealth));
     }
 
     function transferToSelf(uint256 LPT, uint256 SNXT) internal returns (bool) {
