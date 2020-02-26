@@ -132,13 +132,7 @@ contract iUniPool {
 
         // updating the in contract varaible for the number of uints staked
         totalLPTokensStaked = newtotalLPTokensStaked;
-        //@DIPESH to work on mint() function
-        // updating the user's balances for the tokens issued
-        balanceOf[msg.sender] = balanceOf[msg.sender].add(_LPTokenUints);
-
-        // adding to the total supply of the tokens issued
-        totalSupply = totalSupply.add(_LPTokenUints);
-
+        mint(msg.sender, _LPTokenUints);
         return (true);
     }
 
@@ -223,7 +217,7 @@ contract iUniPool {
             SNXTokenAddress.transfer(msg.sender, SNX2beDistributed);
         }
 
-        //@DIPESH to work on the burn() function
+        burn(msg.sender, _DZSLTUintsWithdrawing);
 
     }
 
@@ -246,16 +240,27 @@ contract iUniPool {
         );
     }
 
-    // function getPrice() public returns (uint256) {
-    //     uint256 currentSNXHoldings = SNXTokenAddress.balanceOf(address(this));
-    //     uint256 SNXEarned = howMuchHaveIEarned();
-    //     uint256 LPTokensHoldings = totalLPTokensStaked;
-    //     require(
-    //         totalLPTokensStaked ==
-    //             (Unipool(UnipoolAddress).balanceOf(address(this))),
-    //         "error1"
-    //     );
-    //     // updated till here! Working from here.
-    // }
+    function mint(address account, uint256 amount) internal {
+        require(account != address(0), "ERC20: mint to the zero address");
+        _beforeTokenTransfer(address(0), account, amount);
+        totalSupply = totalSupply.add(amount);
+        balanceOf[account] = balanceOf[account].add(amount);
+        emit Transfer(address(0), account, amount);
+    }
+
+    function _burn(address account, uint256 amount) internal {
+        require(account != address(0), "ERC20: burn from the zero address");
+        _beforeTokenTransfer(account, address(0), amount);
+        balanceOf[account] = balanceOf[account].sub(
+            amount,
+            "ERC20: burn amount exceeds balance"
+        );
+        totalSupply = totalSupply.sub(amount);
+        emit Transfer(account, address(0), amount);
+    }
+
+    function _beforeTokenTransfer(address from, address to, uint256 amount)
+        internal
+    {}
 
 }
