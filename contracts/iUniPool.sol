@@ -263,4 +263,51 @@ contract iUniPool {
         internal
     {}
 
+    function transfer(address recipient, uint256 amount) public returns (bool) {
+        _transfer(msg.sender, recipient, amount);
+        return true;
+    }
+
+    function approve(address spender, uint256 amount) public returns (bool) {
+        _approve(msg.sender, spender, amount);
+        return true;
+    }
+
+    function transferFrom(address sender, address recipient, uint256 amount)
+        public
+        returns (bool)
+    {
+        _transfer(sender, recipient, amount);
+        _approve(
+            sender,
+            msg.sender,
+            allowance[sender][msg.sender].sub(
+                amount,
+                "ERC20: transfer amount exceeds allowance"
+            )
+        );
+        return true;
+    }
+
+    function _transfer(address sender, address recipient, uint256 amount)
+        internal
+    {
+        require(sender != address(0), "ERC20: transfer from the zero address");
+        require(recipient != address(0), "ERC20: transfer to the zero address");
+        _beforeTokenTransfer(sender, recipient, amount);
+        balanceOf[sender] = balanceOf[sender].sub(
+            amount,
+            "ERC20: transfer amount exceeds balance"
+        );
+        balanceOf[recipient] = balanceOf[recipient].add(amount);
+        emit Transfer(sender, recipient, amount);
+    }
+
+    function _approve(address owner, address spender, uint256 amount) internal {
+        require(owner != address(0), "ERC20: approve from the zero address");
+        require(spender != address(0), "ERC20: approve to the zero address");
+        allowance[owner][spender] = amount;
+        emit Approval(owner, spender, amount);
+    }
+
 }
