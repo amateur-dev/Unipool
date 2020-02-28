@@ -84,8 +84,6 @@ contract iUniPool {
             _LPTokenUints
         );
 
-        // FIXME: maybe the mapping of LPTokensSupplied is not required
-        // updating the internal mapping
         LPTokensSupplied[msg.sender] = SafeMath.add(
             LPTokensSupplied[msg.sender],
             _LPTokenUints
