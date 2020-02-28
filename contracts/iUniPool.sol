@@ -75,6 +75,13 @@ contract iUniPool {
         return Unipool(UnipoolAddress).earned(address(this));
     }
 
+    function PriceToStakeNow() external returns (uint256 LP_per_token) {
+        uint256 SNXrewardEarned = Unipool(UnipoolAddress).earned;
+        uint256 eth4SNX = min_eth(SNXrewardEarned, SNXUniSwapTokenAddress);
+        uint256 eth2sETH = min_tokens(((eth4SNX).div(2)), sETH_LP_TokenAddress);
+        // FIXME: Suhail to help on this
+    }
+
     // action functions
     function stakeMyShare(uint256 _LPTokenUints) public returns (uint256) {
         // transfer to this address
