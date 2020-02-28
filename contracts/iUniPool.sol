@@ -1,7 +1,7 @@
 pragma solidity ^0.5.0;
 
 import "./Unipool.sol";
-import "iUniswapExchangeContract.sol";
+import "./iUniswapExchangeContract.sol";
 
 contract iUniPool {
     using SafeMath for uint256;
@@ -82,28 +82,28 @@ contract iUniPool {
         return Unipool(UnipoolAddress).earned(address(this));
     }
 
-    function reBalance() external view {
-        CurrentWealth();
-    }
-
     // action functions
-    function stakeMyShare(uint256 _LPTokenUints) public returns (bool) {
-        // basic check
-
+    function stakeMyShare(uint256 _LPTokenUints) public returns (uint256) {
+        // @this is to confirm that all LP tokens are always staked
         require(
             (sETH_LP_TokenAddress.balanceOf(address(this)) == 0),
             "issue:contract is holding some LP Tokens"
         );
+
+        // dipesh TODO: to check if this is required
         require(
             (_LPTokenUints >= 1000000000),
             "Minimum 1 Gwei LP Tokens required"
         );
 
-        uint256 SNXReq = getSNXRequiredPer_GweiLPT();
         // transfer to this address
-        require(
-            transferToSelf(_LPTokenUints, SNXReq),
-            "issue in trf tokens to self"
+        require(transferToSelf(_LPTokenUints), "issue in trf tokens to self");
+
+        // FIXME: maybe the mapping of LPTokensSupplied is not required
+        // updating the internal mapping
+        LPTokensSupplied[msg.sender] = SafeMath.add(
+            LPTokensSupplied[msg.sender],
+            _LPTokenUints
         );
 
         // staking the LP Tokens
@@ -113,41 +113,68 @@ contract iUniPool {
         );
 
         Unipool(UnipoolAddress).stake(_LPTokenUints);
+
         require(
             (Unipool(UnipoolAddress).balanceOf(address(this)) ==
                 newtotalLPTokensStaked),
             "issue in reconciling the LP uints staked"
         );
-        // updating the internal mapping
-        LPTokensSupplied[msg.sender] = SafeMath.add(
-            LPTokensSupplied[msg.sender],
-            _LPTokenUints
-        );
 
         // updating the in contract varaible for the number of uints staked
         totalLPTokensStaked = newtotalLPTokensStaked;
-        mint(msg.sender, _LPTokenUints);
+        issueTokens(msg.sender, _LPTokenUints);
         return (true);
+    }
+
+    function issueTokens(address toWhom, uint256 howMuchLPStaked)
+        internal
+        returns (uint256 tokensIssued)
+    {
+        if (totalLPTokensStaked == 0) {
+            mint(toWhom, howMuchLPStaked);
+            return (howMuchLPStaked);
+        } else {
+            uint256 priceInLP = getPricePerToken();
+            uint256 qty2bminted = (howMuchLPStaked).div(priceInLP);
+            mint(toWhom, qty2bminted);
+            return (howMuchLPStaked);
+
+        }
+    }
+
+    function getPricePerToken() internal returns (uint256 LP_Per_Token) {
+        if (totalLPTokensStaked == 0) {
+            return (1);
+        } else {
+            // FIXME:
+            simulate_reBalance();
+            require(
+                totalLPTokensStaked ==
+                    Unipool(UnipoolAddress).balanceOf(address(this)),
+                "issue in LPStaked"
+            );
+            return ((totalLPTokensStaked).div(totalSupply));
+        }
     }
 
     // @notice in the situation where the SNX rewards fall terribly low, compared the LPtokens, the SNX Token wealth per LP token staked will be rounded down to zero using SafeMath
     // @notice hence the compuation below returns the value of the SNX requried per Gwei LP Token
     // @notice the minimum required to enter this contract is also 1 GweiLP Token
-    function getSNXRequiredPer_GweiLPT() internal view returns (uint256) {
-        (uint256 LPTWealth, uint256 SNXTWealth) = CurrentWealth();
-        return ((SNXTWealth.mul(1000000000)).div(LPTWealth));
-    }
+    // function getSNXRequiredPer_GweiLPT() internal view returns (uint256) {
+    //     (uint256 LPTWealth, uint256 SNXTWealth) = CurrentWealth();
+    //     return ((SNXTWealth.mul(1000000000)).div(LPTWealth));
+    // }
 
-    function transferToSelf(uint256 LPT, uint256 SNXT) internal returns (bool) {
+    function transferToSelf(uint256 LPT) internal returns (bool) {
         sETH_LP_TokenAddress.transferFrom(msg.sender, address(this), LPT);
-        SNXTokenAddress.transferFrom(msg.sender, address(this), SNXT);
         return (true);
     }
 
-    function quotePrice(uint256 _proposedLPTokens)
+    // TODO: need to do this
+    function TokenValue(uint256 _tokenQTY)
         public
         view
-        returns (uint256 SNXTokensRequired_Per_GweiLPT)
+        returns (uint256 expectedLPTokens)
     {
         return (
             SafeMath.mul(
@@ -157,62 +184,38 @@ contract iUniPool {
         );
     }
 
-    function getMyStakeOut(uint256 _DZSLTUintsWithdrawing) public {
-        // basic check
-        require(
-            (sETH_LP_TokenAddress.balanceOf(address(this)) == 0),
-            "issue:contract is holding some LP Tokens"
-        );
-        // checking if the user has already provided number of uints
-        uint256 LPTOut = _DZSLTUintsWithdrawing;
-        require(
-            (LPTokensSupplied[msg.sender]) >= LPTOut &&
-                balanceOf[msg.sender] >= _DZSLTUintsWithdrawing,
-            "Withdrawing qty more than staked qty"
-        );
+    function getMyStakeOut(uint256 _tokenQTY) public {
+        require(balanceOf[msg.sender] >= _tokenQTY, "Withdrawing qty invalid");
+        uint256 LPT2bReturned = TokenValue(_tokenQTY);
+
+        // FIXME: maybe the mapping of LPTokensSupplied is not required
+
         // updating the internal mapping to reduce user's qty staked
         LPTokensSupplied[msg.sender] = SafeMath.sub(
             LPTokensSupplied[msg.sender],
-            LPTOut
+            LPT2bReturned
         );
+
         // updating the in contract varaible for the number of uints staked
-        totalLPTokensStaked = SafeMath.sub(totalLPTokensStaked, LPTOut);
-        // getting the wealth and price
-        uint256 SNX_perGweiLPT = getSNXRequiredPer_GweiLPT();
-        uint256 LPTinGwei = SafeMath.div(LPTOut, 1000000000);
-        uint256 SNX2beDistributed = SafeMath.mul(SNX_perGweiLPT, LPTinGwei);
+        totalLPTokensStaked = SafeMath.sub(totalLPTokensStaked, LPT2bReturned);
 
         // transferring the LPTokensFirst
-        Unipool(UnipoolAddress).withdraw(LPTOut);
-        require(
-            (sETH_LP_TokenAddress.balanceOf(address(this))) >= LPTOut,
-            "issue in LPTokenBalances"
-        );
-        sETH_LP_TokenAddress.transfer(msg.sender, LPTOut);
+        Unipool(UnipoolAddress).withdraw(LPT2bReturned);
+        sETH_LP_TokenAddress.transfer(msg.sender, LPT2bReturned);
 
-        if ((SNXTokenAddress.balanceOf(address(this))) >= SNX2beDistributed) {
-            SNXTokenAddress.transfer(msg.sender, SNX2beDistributed);
-        } else {
-            Unipool(UnipoolAddress).getReward();
-            require(
-                (SNXTokenAddress.balanceOf(address(this)) >= SNX2beDistributed),
-                "issue in reconciling the SNX holdigs and rewards"
-            );
-            SNXTokenAddress.transfer(msg.sender, SNX2beDistributed);
-        }
-
+        //FIXME:
         burn(msg.sender, _DZSLTUintsWithdrawing);
 
     }
 
-    function CurrentWealth()
-        internal
-        view
-        returns (uint256 LPTokenWealth, uint256 SNXTokenWealth)
-    {
+    function reBalance() public returns (uint256 LPTokenWealth) {
         // LP TokenHoldings (since everything will always be staked)
         uint256 LPHoldings_priorConversion = Unipool(UnipoolAddress).balanceOf(
             address(this)
+        );
+        require(
+            (totalLPTokensStaked == LPHoldings_priorConversion),
+            "issue in LP Tokens Staked"
         );
         // claim reward
         Unipool(UnipoolAddress).getReward();
@@ -221,8 +224,11 @@ contract iUniPool {
 
         if (SNXInHandHoldings != 0) {
             uint256 LPJustReceived = convertSNXtoLP(SNXInHandHoldings);
+            Unipool(UnipoolAddress).stake(LPJustReceived);
+            totalLPTokensStaked += LPJustReceived;
             return (LPHoldings_priorConversion.add(LPJustReceived));
         }
+
         return (LPHoldings_priorConversion);
     }
 
