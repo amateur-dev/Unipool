@@ -76,9 +76,15 @@ contract iUniPool {
     }
 
     function PriceToStakeNow() external returns (uint256 LP_per_token) {
-        uint256 SNXrewardEarned = Unipool(UnipoolAddress).earned;
-        uint256 eth4SNX = min_eth(SNXrewardEarned, SNXUniSwapTokenAddress);
-        uint256 eth2sETH = min_tokens(((eth4SNX).div(2)), sETH_LP_TokenAddress);
+        uint256 SNXrewardEarned = Unipool(UnipoolAddress).earned(address(this));
+        uint256 eth4SNX = min_eth(
+            SNXrewardEarned,
+            address(SNXUniSwapTokenAddress)
+        );
+        uint256 eth2sETH = min_tokens(
+            ((eth4SNX).div(2)),
+            address(sETH_LP_TokenAddress)
+        );
         // FIXME: Suhail to help on this
     }
 
@@ -187,7 +193,7 @@ contract iUniPool {
                 (min_eth(con_po, address(SNXUniSwapTokenAddress)).mul(99)).div(
                     100
                 ),
-                address(sETHUniSwapTokenAddress)
+                address(sETH_LP_TokenAddress)
             ),
             (min_eth(con_po, address(SNXUniSwapTokenAddress)).mul(99).div(100)),
             now.add(300),
