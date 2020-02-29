@@ -1,0 +1,22 @@
+{
+  "manifestVersion": "2.2",
+  "contracts": {
+    "iUniPool": "iUniPool"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts-ethereum-package": "^2.4.0"
+  },
+  "name": "Unipool",
+  "version": "0.0.1",
+  "telemetryOptIn": true,
+  "compiler": {
+    "manager": "openzeppelin",
+    "compilerSettings": {
+      "optimizer": {
+        "enabled": false,
+        "runs": "200"
+      }
+    },
+    "solcVersion": "0.5.16"
+  }
+}

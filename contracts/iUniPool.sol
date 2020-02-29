@@ -14,6 +14,12 @@ contract iUniPool {
     uint8 public constant decimals = 18;
     uint256 public totalSupply;
 
+    /**
+     - No setters in this contract, if SNXUniswapToken (i.e. our SNX Zap in)
+     requires changes, what happens to this contract's functionality?
+     - When Uniswap V2 launches,  will we need to deploy a v2 or new version of DZSLT
+     due to changes in sETH_LP_TokenAddress and potentially a new version of SNXUniswapTokenAddress?
+    */
     address public constant UnipoolAddress = 0x48D7f315feDcaD332F68aafa017c7C158BC54760;
     IERC20 public constant sETHTokenAddress = IERC20(
         0x5e74C9036fb86BD7eCdcb084a0673EFc32eA31cb
@@ -25,7 +31,7 @@ contract iUniPool {
         0xC011a73ee8576Fb46F5E1c5751cA3B9Fe0af2a6F
     );
     IERC20 public constant SNXUniSwapTokenAddress = IERC20(
-        0xe3385df5b47687405A02Fc24322DeDb7df381852
+        0x3958B4eC427F8fa24eB60F42821760e88d485f7F
     );
 
     uint256 public totalLPTokensStaked;
@@ -45,12 +51,12 @@ contract iUniPool {
     }
 
     function approve_Addresses() internal {
-        IERC20(sETH_LP_TokenAddress).approve(UnipoolAddress, ((2 ^ 256) - 1));
-        IERC20(SNXTokenAddress).approve(
+        IERC20(sETH_LP_TokenAddress).approve(UnipoolAddress, ((2 ** 256) - 1)); // Already IERC20 declared above
+        IERC20(SNXTokenAddress).approve( // Already IERC20 declared above
             address(SNXUniSwapTokenAddress),
             ((2 ^ 256) - 1)
         );
-        IERC20(sETHTokenAddress).approve(
+        IERC20(sETHTokenAddress).approve( // Already IERC20 declared above
             address(sETH_LP_TokenAddress),
             ((2 ^ 256) - 1)
         );
@@ -75,10 +81,24 @@ contract iUniPool {
         return Unipool(UnipoolAddress).earned(address(this));
     }
 
-    function PriceToStakeNow() external returns (uint256 LP_per_token) {
-        uint256 SNXrewardEarned = Unipool(UnipoolAddress).earned;
-        uint256 eth4SNX = min_eth(SNXrewardEarned, SNXUniSwapTokenAddress);
-        uint256 eth2sETH = min_tokens(((eth4SNX).div(2)), sETH_LP_TokenAddress);
+    /**
+     * @dev Returns the amount of extra input LP that is required to
+     * buy additional units of this contract's tokens. The amount of
+     * extra input LP that is required increases or decreases as this 
+     * contract's stake of SNX changes. E.g 0.06 returned means that
+     * 0.06 + supplied LP is required to buy this contract's token.
+     */
+    function PriceToStakeNow() external returns (uint256) {
+        uint256 SNXrewardEarned = Unipool(UnipoolAddress).earned(address(this));
+        if(SNXrewardEarned > 0){
+            uint256 eth4SNX = min_eth(SNXrewardEarned, address(SNXUniSwapTokenAddress));
+            uint256 eth2sETH = min_tokens(((eth4SNX).div(2)), address(sETH_LP_TokenAddress));
+            uint256 eth_reserves = address(sETH_LP_TokenAddress).balance;
+            uint256 LP_total_supply = sETH_LP_TokenAddress.totalSupply();
+            uint256 LP_for_stake = (eth4SNX.div(2).mul(LP_total_supply)).div(eth_reserves);
+            return LP_for_stake;
+        }
+        return 0;
         // FIXME: Suhail to help on this
     }
 
@@ -101,7 +121,7 @@ contract iUniPool {
         uint256 tokens = issueTokens(msg.sender, _LPTokenUints);
 
         // updating the in contract varaible for the number of uints staked
-        totalLPTokensStaked += _LPTokenUints;
+        totalLPTokensStaked += _LPTokenUints; //Consider using SafeMath.add(totalLPTokensStaked, _LPTokenUints);
         return (tokens);
     }
 
@@ -187,7 +207,7 @@ contract iUniPool {
                 (min_eth(con_po, address(SNXUniSwapTokenAddress)).mul(99)).div(
                     100
                 ),
-                address(sETHUniSwapTokenAddress)
+                address(sETHTokenAddress)
             ),
             (min_eth(con_po, address(SNXUniSwapTokenAddress)).mul(99).div(100)),
             now.add(300),
