@@ -15,9 +15,7 @@ contract iUniPool {
     uint256 public totalSupply;
 
     /**
-     - No setters in this contract, if SNXUniswapToken (i.e. our SNX Zap in)
-     requires changes, what happens to this contract's functionality?
-     - When Uniswap V2 launches,  will we need to deploy a v2 or new version of DZSLT
+     - Need to check impact of Uniswap V2,  will we need to deploy a v2 or new version of DZSLT
      due to changes in sETH_LP_TokenAddress and potentially a new version of SNXUniswapTokenAddress?
     */
     address public constant UnipoolAddress = 0x48D7f315feDcaD332F68aafa017c7C158BC54760;
@@ -66,7 +64,7 @@ contract iUniPool {
     // reader functions
 
     function howMuchHasThisContractStaked()
-        external
+        public
         view
         returns (uint256 LPTokens)
     {
@@ -74,7 +72,7 @@ contract iUniPool {
     }
 
     function howMuchHasThisContractEarned()
-        external
+        public
         view
         returns (uint256 SNXEarned)
     {
@@ -82,35 +80,31 @@ contract iUniPool {
     }
 
     /**
-     * @dev Returns the amount of extra input LP that is required to
-     * buy additional units of this contract's tokens. The amount of
-     * extra input LP that is required increases or decreases as this 
-     * contract's stake of SNX changes. E.g 0.06 returned means that
-     * 0.06 + supplied LP is required to buy this contract's token.
+     * @dev Returs the amount of LP required to stake / transfer to buy 1 DZLT token
      */
-    function PriceToStakeNow() external returns (uint256) {
-        uint256 SNXrewardEarned = Unipool(UnipoolAddress).earned(address(this));
-        if (SNXrewardEarned > 0) {
-            uint256 eth4SNX = min_eth(
-                SNXrewardEarned,
-                address(SNXUniSwapTokenAddress)
-            );
-            // uint256 eth2sETH = min_tokens(
-            //     ((eth4SNX).div(2)),
-            //     address(sETH_LP_TokenAddress)
-            // );
-            uint256 eth_reserves = address(sETH_LP_TokenAddress).balance;
-            uint256 LP_total_supply = sETH_LP_TokenAddress.totalSupply();
-            uint256 LP_for_stake = (eth4SNX.div(2).mul(LP_total_supply)).div(
-                eth_reserves
-            );
-            return
-                (LP_for_stake).add(howMuchHasThisContractStaked()).div(
-                    totalSupply
+    function PriceToStakeNow() external view returns (uint256) {
+        if (totalSupply > 0) {
+            if (Unipool(UnipoolAddress).earned(address(this)) > 0) {
+                uint256 eth4SNX = min_eth(
+                    (Unipool(UnipoolAddress).earned(address(this))),
+                    address(SNXUniSwapTokenAddress)
                 );
+                uint256 eth_reserves = address(sETH_LP_TokenAddress).balance;
+                uint256 LP_total_supply = sETH_LP_TokenAddress.totalSupply();
+                uint256 LP_for_stake = (eth4SNX.div(2).mul(LP_total_supply))
+                    .div(eth_reserves);
+                return
+                    (LP_for_stake).add(howMuchHasThisContractStaked()).div(
+                        totalSupply
+                    );
+            } else {
+                return (howMuchHasThisContractStaked()).div(totalSupply);
+            }
+
+        } else {
+            return (1);
         }
-        return 0;
-        // FIXME: Suhail to help on this
+
     }
 
     // action functions
@@ -180,9 +174,8 @@ contract iUniPool {
 
     function reBalance(bool enter) public returns (uint256 LPTokenWealth) {
         // LP TokenHoldings (since everything will always be staked)
-        uint256 LPHoldings_b4Rebalance = Unipool(UnipoolAddress).balanceOf(
-            address(this)
-        );
+        uint256 LPHoldings_b4Rebalance = howMuchHasThisContractStaked();
+        // uint256 SNXEarned = howMuchHasThisContractEarned();
 
         // claim reward
         Unipool(UnipoolAddress).getReward();
@@ -190,7 +183,7 @@ contract iUniPool {
         // SNX TokenHoldings
         uint256 SNXInHandHoldings = SNXTokenAddress.balanceOf(address(this));
 
-        if (SNXInHandHoldings != 0) {
+        if (SNXInHandHoldings > 0) {
             uint256 LPJustReceived = convertSNXtoLP(SNXInHandHoldings);
             if (enter) {
                 Unipool(UnipoolAddress).stake(LPJustReceived);
@@ -208,9 +201,7 @@ contract iUniPool {
     {
         uint256 con_po = SafeMath.div(SNXQty, 2).add(1000);
         uint256 non_con_po = SafeMath.sub(SNXQty, con_po);
-        uint256 con_po_seth = UniswapExchangeInterface(
-            address(SNXUniSwapTokenAddress)
-        )
+        UniswapExchangeInterface(address(SNXUniSwapTokenAddress))
             .tokenToTokenSwapInput(
             con_po,
             min_tokens(
@@ -269,6 +260,7 @@ contract iUniPool {
 
     function min_eth(uint256 tokenQTY, address uniExchAdd)
         internal
+        view
         returns (uint256)
     {
         return
@@ -279,6 +271,7 @@ contract iUniPool {
 
     function min_tokens(uint256 ethAmt, address uniExchAdd)
         internal
+        view
         returns (uint256)
     {
         return
