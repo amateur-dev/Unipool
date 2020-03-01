@@ -51,14 +51,14 @@ contract iUniPool {
     }
 
     function approve_Addresses() internal {
-        IERC20(sETH_LP_TokenAddress).approve(UnipoolAddress, ((2 ** 256) - 1)); // Already IERC20 declared above
-        IERC20(SNXTokenAddress).approve( // Already IERC20 declared above
+        sETH_LP_TokenAddress.approve(UnipoolAddress, ((2**256) - 1));
+        SNXTokenAddress.approve(
             address(SNXUniSwapTokenAddress),
-            ((2 ^ 256) - 1)
+            ((2**256) - 1)
         );
-        IERC20(sETHTokenAddress).approve( // Already IERC20 declared above
+        IERC20(sETHTokenAddress).approve(
             address(sETH_LP_TokenAddress),
-            ((2 ^ 256) - 1)
+            ((2**256) - 1)
         );
 
     }
@@ -90,13 +90,24 @@ contract iUniPool {
      */
     function PriceToStakeNow() external returns (uint256) {
         uint256 SNXrewardEarned = Unipool(UnipoolAddress).earned(address(this));
-        if(SNXrewardEarned > 0){
-            uint256 eth4SNX = min_eth(SNXrewardEarned, address(SNXUniSwapTokenAddress));
-            uint256 eth2sETH = min_tokens(((eth4SNX).div(2)), address(sETH_LP_TokenAddress));
+        if (SNXrewardEarned > 0) {
+            uint256 eth4SNX = min_eth(
+                SNXrewardEarned,
+                address(SNXUniSwapTokenAddress)
+            );
+            // uint256 eth2sETH = min_tokens(
+            //     ((eth4SNX).div(2)),
+            //     address(sETH_LP_TokenAddress)
+            // );
             uint256 eth_reserves = address(sETH_LP_TokenAddress).balance;
             uint256 LP_total_supply = sETH_LP_TokenAddress.totalSupply();
-            uint256 LP_for_stake = (eth4SNX.div(2).mul(LP_total_supply)).div(eth_reserves);
-            return LP_for_stake;
+            uint256 LP_for_stake = (eth4SNX.div(2).mul(LP_total_supply)).div(
+                eth_reserves
+            );
+            return
+                (LP_for_stake).add(howMuchHasThisContractStaked()).div(
+                    totalSupply
+                );
         }
         return 0;
         // FIXME: Suhail to help on this
@@ -141,7 +152,6 @@ contract iUniPool {
         if (totalLPTokensStaked == 0 && totalSupply == 0) {
             return (1);
         } else {
-            // FIXME: to write up the function of simulate
             uint256 totalLPs = reBalance(enter);
             return totalSupply.div(totalLPs);
 
