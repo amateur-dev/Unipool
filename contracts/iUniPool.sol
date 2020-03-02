@@ -44,6 +44,9 @@ contract iUniPool {
     event Approval(address indexed src, address indexed guy, uint256 wad);
     event Transfer(address indexed src, address indexed dst, uint256 wad);
 
+    // testing events
+    event internall(string, uint256);
+
     constructor() public {
         approve_Addresses();
     }
@@ -134,7 +137,7 @@ contract iUniPool {
         internal
         returns (uint256 tokensIssued)
     {
-        uint256 tokens2bIssued = getPricePerToken(true).mul(howMuchLPStaked);
+        uint256 tokens2bIssued = (howMuchLPStaked).div(getPricePerToken(true));
         mint(toWhom, tokens2bIssued);
         return tokens2bIssued;
     }
@@ -147,17 +150,17 @@ contract iUniPool {
             return (1);
         } else {
             uint256 totalLPs = reBalance(enter);
-            return totalSupply.div(totalLPs);
-
-            // return ((totalLPTokensStaked).div(totalSupply));
-
+            return ((totalLPs).div(totalSupply));
         }
     }
 
     function getMyStakeOut(uint256 _tokenQTY) public {
         require(balanceOf[msg.sender] >= _tokenQTY, "Withdrawing qty invalid");
-        uint256 LPs2bRedemeed = _tokenQTY.div(getPricePerToken(false));
+
+        uint256 LPs2bRedemeed = _tokenQTY.mul(getPricePerToken(false));
+
         uint256 LPsInHand = sETH_LP_TokenAddress.balanceOf(address(this));
+
         if (LPs2bRedemeed > LPsInHand) {
             uint256 LPsShortOf = LPs2bRedemeed.sub(LPsInHand);
             Unipool(UnipoolAddress).withdraw(LPsShortOf);
@@ -175,75 +178,115 @@ contract iUniPool {
     function reBalance(bool enter) public returns (uint256 LPTokenWealth) {
         // LP TokenHoldings (since everything will always be staked)
         uint256 LPHoldings_b4Rebalance = howMuchHasThisContractStaked();
-        // uint256 SNXEarned = howMuchHasThisContractEarned();
 
+        // FIXME:to be discussed
         // claim reward
-        Unipool(UnipoolAddress).getReward();
+        if (howMuchHasThisContractEarned() > 500000000000000) {
+            Unipool(UnipoolAddress).getReward();
+        }
 
         // SNX TokenHoldings
         uint256 SNXInHandHoldings = SNXTokenAddress.balanceOf(address(this));
 
-        if (SNXInHandHoldings > 0) {
+        /* @dev it is highly likely that SNX smaller than this 
+        / will cause the conversion of SNX to LP fail
+        / considering the price of SNX that to ETH and SETH
+        */
+        if (SNXInHandHoldings > 500000000000000) {
             uint256 LPJustReceived = convertSNXtoLP(SNXInHandHoldings);
             if (enter) {
                 Unipool(UnipoolAddress).stake(LPJustReceived);
                 totalLPTokensStaked += LPJustReceived;
-
+                return (LPHoldings_b4Rebalance.add(LPJustReceived));
             }
             return (LPHoldings_b4Rebalance.add(LPJustReceived));
         }
+        return (LPHoldings_b4Rebalance);
 
     }
 
     function convertSNXtoLP(uint256 SNXQty)
-        internal
+        public
         returns (uint256 LPReceived)
     {
-        uint256 con_po = SafeMath.div(SNXQty, 2).add(1000);
-        uint256 non_con_po = SafeMath.sub(SNXQty, con_po);
-        UniswapExchangeInterface(address(SNXUniSwapTokenAddress))
-            .tokenToTokenSwapInput(
-            con_po,
-            min_tokens(
-                (min_eth(con_po, address(SNXUniSwapTokenAddress)).mul(99)).div(
-                    100
-                ),
-                address(sETHTokenAddress)
-            ),
-            (min_eth(con_po, address(SNXUniSwapTokenAddress)).mul(99).div(100)),
-            now.add(300),
-            address(sETHTokenAddress)
-        );
-        uint256 non_con_po_eth = UniswapExchangeInterface(
+        uint256 SNX2BcETH = SafeMath.mul(SNXQty, 4985).div(10000);
+        uint256 SNX2BcSETH = SafeMath.sub(SNXQty, SNX2BcETH);
+
+        uint256 ETHfromSNX = UniswapExchangeInterface(
             address(SNXUniSwapTokenAddress)
         )
             .tokenToEthSwapInput(
-            non_con_po,
+            SNX2BcETH,
             (
                 (
-                    min_eth(con_po, address(SNXUniSwapTokenAddress))
-                        .mul(99)
-                        .div(100)
+                    min_eth(SNX2BcETH, address(SNXUniSwapTokenAddress))
+                        .mul(995)
+                        .div(1000)
                 )
             ),
             now.add(300)
         );
-        return
-            UniswapExchangeInterface(address(sETH_LP_TokenAddress))
-                .addLiquidity
-                .value(non_con_po_eth)(
-                1,
-                getMaxTokens(
-                    address(sETH_LP_TokenAddress),
-                    sETHTokenAddress,
-                    non_con_po_eth
+
+        UniswapExchangeInterface(address(SNXUniSwapTokenAddress))
+            .tokenToTokenSwapInput(
+            SNX2BcSETH,
+            min_tokens(
+                (min_eth(SNX2BcSETH, address(SNXUniSwapTokenAddress)).mul(995))
+                    .div(1000),
+                address(sETH_LP_TokenAddress)
+            ),
+            (
+                min_eth(SNX2BcSETH, address(SNXUniSwapTokenAddress))
+                    .mul(995)
+                    .div(1000)
+            ),
+            now.add(300),
+            address(sETHTokenAddress)
+        );
+
+        uint256 LPU = UniswapExchangeInterface(address(sETH_LP_TokenAddress))
+            .addLiquidity
+            .value(ETHfromSNX)(
+            1,
+            getMaxTokens(
+                address(sETH_LP_TokenAddress),
+                sETHTokenAddress,
+                ETHfromSNX
+            ),
+            now.add(300)
+        );
+
+        UniswapExchangeInterface(address(sETH_LP_TokenAddress))
+            .tokenToTokenSwapInput(
+            (sETHTokenAddress.balanceOf(address(this))),
+            min_tokens(
+                (
+                    min_eth(
+                        (sETHTokenAddress.balanceOf(address(this))),
+                        address(sETH_LP_TokenAddress)
+                    )
+                        .mul(995)
+                        .div(1000)
                 ),
-                now.add(300)
-            );
+                address(SNXUniSwapTokenAddress)
+            ),
+            (
+                min_eth(
+                    (sETHTokenAddress.balanceOf(address(this))),
+                    address(sETH_LP_TokenAddress)
+                )
+                    .mul(995)
+                    .div(1000)
+            ),
+            now.add(300),
+            address(SNXTokenAddress)
+        );
+
+        return LPU;
     }
 
     function getMaxTokens(address uniExchAdd, IERC20 ERC20Add, uint256 value)
-        internal
+        public
         view
         returns (uint256)
     {
@@ -259,7 +302,7 @@ contract iUniPool {
     }
 
     function min_eth(uint256 tokenQTY, address uniExchAdd)
-        internal
+        public
         view
         returns (uint256)
     {
@@ -270,7 +313,7 @@ contract iUniPool {
     }
 
     function min_tokens(uint256 ethAmt, address uniExchAdd)
-        internal
+        public
         view
         returns (uint256)
     {
@@ -348,6 +391,10 @@ contract iUniPool {
         require(spender != address(0), "ERC20: approve to the zero address");
         allowance[owner][spender] = amount;
         emit Approval(owner, spender, amount);
+    }
+
+    function() external payable {
+        emit internall("got cash", msg.value);
     }
 
 }
