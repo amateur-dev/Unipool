@@ -36,7 +36,6 @@ contract iUniPool {
 
     mapping(address => uint256) public balanceOf;
     mapping(address => mapping(address => uint256)) public allowance;
-    mapping(address => uint256) public LPTokensSupplied;
 
     // events
     event LPTokensStaked(address indexed staker, uint256 qtyStaked);
@@ -57,11 +56,7 @@ contract iUniPool {
             address(SNXUniSwapTokenAddress),
             ((2**256) - 1)
         );
-        IERC20(sETHTokenAddress).approve(
-            address(sETH_LP_TokenAddress),
-            ((2**256) - 1)
-        );
-
+        sETHTokenAddress.approve(address(sETH_LP_TokenAddress), ((2**256) - 1));
     }
 
     // reader functions
@@ -85,30 +80,32 @@ contract iUniPool {
     /**
      * @dev Returs the amount of LP required to stake / transfer to buy 1 DZLT token
      */
-    function PriceToStakeNow() external view returns (uint256) {
-        if (totalSupply > 0) {
-            if (Unipool(UnipoolAddress).earned(address(this)) > 0) {
-                uint256 eth4SNX = min_eth(
-                    (Unipool(UnipoolAddress).earned(address(this))),
-                    address(SNXUniSwapTokenAddress)
-                );
-                uint256 eth_reserves = address(sETH_LP_TokenAddress).balance;
-                uint256 LP_total_supply = sETH_LP_TokenAddress.totalSupply();
-                uint256 LP_for_stake = (eth4SNX.div(2).mul(LP_total_supply))
-                    .div(eth_reserves);
-                return
-                    (LP_for_stake).add(howMuchHasThisContractStaked()).div(
-                        totalSupply
-                    );
-            } else {
-                return (howMuchHasThisContractStaked()).div(totalSupply);
-            }
+    // function PriceToStakeNow() external view returns (uint256) {
+    //     if (totalSupply > 0) {
+    //         if (Unipool(UnipoolAddress).earned(address(this)) > 0) {
+    //             uint256 eth4SNX = min_eth(
+    //             (Unipool(UnipoolAddress).earned(address(this))),
+    //             address(SNXUniSwapTokenAddress)
+    //         );
+    //         uint256 eth_reserves = address(sETH_LP_TokenAddress).balance;
+    //         uint256 LP_total_supply = sETH_LP_TokenAddress.totalSupply();
+    //         uint256 LP_for_stake = (eth4SNX.div(2).mul(LP_total_supply)).div(
+    //             eth_reserves
+    //         );
+    //         return
+    //             (LP_for_stake).add(howMuchHasThisContractStaked()).div(
+    //                 totalSupply
+    //             );
+    //         } else {
+    //             return (howMuchHasThisContractStaked()).div(
+    //                 totalSupply);
+    //         }
 
-        } else {
-            return (1);
-        }
+    //     } else {
+    //         return (1);
+    //     }
 
-    }
+    // }
 
     // action functions
     function stakeMyShare(uint256 _LPTokenUints) public returns (uint256) {
@@ -119,17 +116,12 @@ contract iUniPool {
             _LPTokenUints
         );
 
-        LPTokensSupplied[msg.sender] = SafeMath.add(
-            LPTokensSupplied[msg.sender],
-            _LPTokenUints
-        );
+        uint256 tokens = issueTokens(msg.sender, _LPTokenUints);
+        emit internall("tokens", tokens);
 
         Unipool(UnipoolAddress).stake(_LPTokenUints);
 
-        uint256 tokens = issueTokens(msg.sender, _LPTokenUints);
-
-        // updating the in contract varaible for the number of uints staked
-        totalLPTokensStaked += _LPTokenUints; //Consider using SafeMath.add(totalLPTokensStaked, _LPTokenUints);
+        totalLPTokensStaked = totalLPTokensStaked.add(_LPTokenUints);
         return (tokens);
     }
 
@@ -137,72 +129,57 @@ contract iUniPool {
         internal
         returns (uint256 tokensIssued)
     {
-        uint256 tokens2bIssued = (howMuchLPStaked).div(getPricePerToken(true));
+        (uint256 totalLPs, uint256 totalDZTs) = getDetails(true);
+        uint256 tokens2bIssued = (howMuchLPStaked.mul(totalDZTs)).div(totalLPs);
+        emit internall("howMuchLPStaked", howMuchLPStaked);
+        emit internall("tokens2bIssued", tokens2bIssued);
         mint(toWhom, tokens2bIssued);
         return tokens2bIssued;
     }
 
-    function getPricePerToken(bool enter)
+    function getDetails(bool enter)
         internal
-        returns (uint256 LP_Per_Token)
+        returns (uint256 totalLPs, uint256 totalDZTs)
     {
         if (totalLPTokensStaked == 0 && totalSupply == 0) {
-            return (1);
+            emit internall("entering phase 1", 0);
+            return (1, 1);
         } else {
-            uint256 totalLPs = reBalance(enter);
-            return ((totalLPs).div(totalSupply));
+            emit internall("entering phase 2", 1);
+            return (reBalance(enter), totalSupply);
         }
-    }
-
-    function getMyStakeOut(uint256 _tokenQTY) public {
-        require(balanceOf[msg.sender] >= _tokenQTY, "Withdrawing qty invalid");
-
-        uint256 LPs2bRedemeed = _tokenQTY.mul(getPricePerToken(false));
-
-        uint256 LPsInHand = sETH_LP_TokenAddress.balanceOf(address(this));
-
-        if (LPs2bRedemeed > LPsInHand) {
-            uint256 LPsShortOf = LPs2bRedemeed.sub(LPsInHand);
-            Unipool(UnipoolAddress).withdraw(LPsShortOf);
-        }
-        sETH_LP_TokenAddress.transfer(msg.sender, LPs2bRedemeed);
-        // updating the internal mapping to reduce user's qty staked
-        LPTokensSupplied[msg.sender] = SafeMath.sub(
-            LPTokensSupplied[msg.sender],
-            LPs2bRedemeed
-        );
-        totalLPTokensStaked -= LPs2bRedemeed;
-        burn(msg.sender, _tokenQTY);
     }
 
     function reBalance(bool enter) public returns (uint256 LPTokenWealth) {
-        // LP TokenHoldings (since everything will always be staked)
-        uint256 LPHoldings_b4Rebalance = howMuchHasThisContractStaked();
-
-        // FIXME:to be discussed
-        // claim reward
-        if (howMuchHasThisContractEarned() > 500000000000000) {
-            Unipool(UnipoolAddress).getReward();
-        }
-
-        // SNX TokenHoldings
-        uint256 SNXInHandHoldings = SNXTokenAddress.balanceOf(address(this));
-
-        /* @dev it is highly likely that SNX smaller than this 
-        / will cause the conversion of SNX to LP fail
-        / considering the price of SNX that to ETH and SETH
+        /* @dev: it does not make economical sense to claim reward if the SNX 
+        / earned is less than 0.000005; considering the price of SNX at the time 
+        / of writing this contract
         */
-        if (SNXInHandHoldings > 500000000000000) {
+
+        if (howMuchHasThisContractEarned() > 0.000005 ether) {
+            emit internall(
+                "Earnings more than the threshold",
+                howMuchHasThisContractEarned()
+            );
+            Unipool(UnipoolAddress).getReward();
+            emit internall("Claiming Reward", 12);
+            uint256 SNXInHandHoldings = SNXTokenAddress.balanceOf(
+                address(this)
+            ); // 0
             uint256 LPJustReceived = convertSNXtoLP(SNXInHandHoldings);
+            emit internall("LPJustReceived", LPJustReceived);
             if (enter) {
                 Unipool(UnipoolAddress).stake(LPJustReceived);
-                totalLPTokensStaked += LPJustReceived;
-                return (LPHoldings_b4Rebalance.add(LPJustReceived));
+                totalLPTokensStaked = totalLPTokensStaked.add(LPJustReceived);
+                emit internall("totalLPTokensStaked", totalLPTokensStaked);
+                return (totalLPTokensStaked);
+            } else {
+                return (totalLPTokensStaked.add(LPJustReceived));
             }
-            return (LPHoldings_b4Rebalance.add(LPJustReceived));
-        }
-        return (LPHoldings_b4Rebalance);
 
+        } else {
+            return (totalLPTokensStaked);
+        }
     }
 
     function convertSNXtoLP(uint256 SNXQty)
@@ -227,6 +204,7 @@ contract iUniPool {
             now.add(300)
         );
 
+        // converting a portion of the SNX to sETH for the purpose of adding liquidity
         UniswapExchangeInterface(address(SNXUniSwapTokenAddress))
             .tokenToTokenSwapInput(
             SNX2BcSETH,
@@ -244,6 +222,7 @@ contract iUniPool {
             address(sETHTokenAddress)
         );
 
+        // adding liquidity
         uint256 LPU = UniswapExchangeInterface(address(sETH_LP_TokenAddress))
             .addLiquidity
             .value(ETHfromSNX)(
@@ -255,6 +234,8 @@ contract iUniPool {
             ),
             now.add(300)
         );
+
+        // converting the balance sETH to SNX
 
         UniswapExchangeInterface(address(sETH_LP_TokenAddress))
             .tokenToTokenSwapInput(
@@ -323,6 +304,26 @@ contract iUniPool {
             );
     }
 
+    function getMyStakeOut(uint256 _tokenQTY) public {
+        require(balanceOf[msg.sender] >= _tokenQTY, "Withdrawing qty invalid");
+        (uint256 totalLPs, uint256 totalDZTs) = getDetails(false);
+        uint256 LPs2bRedemeed = (_tokenQTY.mul(totalLPs)).div(totalDZTs);
+        uint256 LPsInHand = sETH_LP_TokenAddress.balanceOf(address(this));
+        if (LPs2bRedemeed > LPsInHand) {
+            uint256 LPsShortOf = LPs2bRedemeed.sub(LPsInHand);
+            Unipool(UnipoolAddress).withdraw(LPsShortOf);
+            sETH_LP_TokenAddress.transfer(msg.sender, LPs2bRedemeed);
+        } else {
+            sETH_LP_TokenAddress.transfer(msg.sender, LPs2bRedemeed);
+            uint256 leftOverLPs = sETH_LP_TokenAddress.balanceOf(address(this));
+            if (leftOverLPs > 0) {
+                Unipool(UnipoolAddress).stake(leftOverLPs);
+            }
+        }
+        totalLPTokensStaked = totalLPTokensStaked.sub(LPs2bRedemeed);
+        burn(msg.sender, _tokenQTY);
+    }
+
     function mint(address account, uint256 amount) internal {
         require(account != address(0), "ERC20: mint to the zero address");
         // _beforeTokenTransfer(address(0), account, amount);
@@ -341,10 +342,6 @@ contract iUniPool {
         totalSupply = totalSupply.sub(amount);
         emit Transfer(account, address(0), amount);
     }
-
-    // function _beforeTokenTransfer(address from, address to, uint256 amount)
-    //     internal
-    // {}
 
     function transfer(address recipient, uint256 amount) public returns (bool) {
         _transfer(msg.sender, recipient, amount);
