@@ -14,9 +14,14 @@
     "compilerSettings": {
       "optimizer": {
         "enabled": false,
-        "runs": "200"
+        "runs": "500"
       }
     },
-    "solcVersion": "0.5.16"
+    "solcVersion": "0.5.13",
+    "artifactsDir": "build/contracts",
+    "contractsDir": "contracts",
+    "typechain": {
+      "enabled": false
+    }
   }
 }
