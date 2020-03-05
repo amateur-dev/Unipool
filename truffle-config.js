@@ -24,7 +24,8 @@ module.exports = {
         optimizer: {
           enabled: true,
           runs: 500,
-        }
+        },
+        evmVersion: 'constantinople',
       }
     },
   },
