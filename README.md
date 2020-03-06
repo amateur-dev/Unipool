@@ -1,4 +1,4 @@
-# Unipool
+# zUnipool
 
 This is repo is built on top of the Unipool repo by the user k06a (forked from).  The only addition to this repo as of now is the zUnipool.sol
 
