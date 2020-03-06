@@ -8,8 +8,8 @@ contract iUniPool {
     using SafeERC20 for IERC20;
 
     // --- ERC20 Data ---
-    string public constant name = "DZSLT";
-    string public constant symbol = "DZSLT";
+    string public constant name = "zUNI";
+    string public constant symbol = "zUNI";
     string public constant version = "1";
     uint8 public constant decimals = 18;
     uint256 public totalSupply;

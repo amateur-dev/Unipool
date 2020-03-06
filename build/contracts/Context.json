@@ -94,7 +94,7 @@
                       "name": "msg",
                       "nodeType": "Identifier",
                       "overloadedDeclarations": [],
-                      "referencedDeclaration": 2681,
+                      "referencedDeclaration": 2768,
                       "src": "867:3:0",
                       "typeDescriptions": {
                         "typeIdentifier": "t_magic_message",
@@ -188,7 +188,7 @@
                     "name": "this",
                     "nodeType": "Identifier",
                     "overloadedDeclarations": [],
-                    "referencedDeclaration": 2695,
+                    "referencedDeclaration": 2782,
                     "src": "957:4:0",
                     "typeDescriptions": {
                       "typeIdentifier": "t_contract$_Context_$26",
@@ -208,7 +208,7 @@
                       "name": "msg",
                       "nodeType": "Identifier",
                       "overloadedDeclarations": [],
-                      "referencedDeclaration": 2681,
+                      "referencedDeclaration": 2768,
                       "src": "1097:3:0",
                       "typeDescriptions": {
                         "typeIdentifier": "t_magic_message",
@@ -305,6 +305,5 @@
       "runs": 500
     },
     "evmVersion": "petersburg"
-  },
-  "networks": {}
+  }
 }

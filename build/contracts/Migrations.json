@@ -186,7 +186,7 @@
                         "name": "msg",
                         "nodeType": "Identifier",
                         "overloadedDeclarations": [],
-                        "referencedDeclaration": 2681,
+                        "referencedDeclaration": 2768,
                         "src": "155:3:8",
                         "typeDescriptions": {
                           "typeIdentifier": "t_magic_message",
@@ -297,7 +297,7 @@
                         "name": "msg",
                         "nodeType": "Identifier",
                         "overloadedDeclarations": [],
-                        "referencedDeclaration": 2681,
+                        "referencedDeclaration": 2768,
                         "src": "253:3:8",
                         "typeDescriptions": {
                           "typeIdentifier": "t_magic_message",
@@ -736,6 +736,5 @@
       "runs": 500
     },
     "evmVersion": "petersburg"
-  },
-  "networks": {}
+  }
 }

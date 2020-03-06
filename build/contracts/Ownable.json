@@ -665,10 +665,10 @@
                       "name": "require",
                       "nodeType": "Identifier",
                       "overloadedDeclarations": [
-                        2684,
-                        2685
+                        2771,
+                        2772
                       ],
-                      "referencedDeclaration": 2685,
+                      "referencedDeclaration": 2772,
                       "src": "1095:7:3",
                       "typeDescriptions": {
                         "typeIdentifier": "t_function_require_pure$_t_bool_$_t_string_memory_ptr_$returns$__$",
@@ -1364,10 +1364,10 @@
                       "name": "require",
                       "nodeType": "Identifier",
                       "overloadedDeclarations": [
-                        2684,
-                        2685
+                        2771,
+                        2772
                       ],
-                      "referencedDeclaration": 2685,
+                      "referencedDeclaration": 2772,
                       "src": "2243:7:3",
                       "typeDescriptions": {
                         "typeIdentifier": "t_function_require_pure$_t_bool_$_t_string_memory_ptr_$returns$__$",
@@ -1581,6 +1581,5 @@
       "runs": 500
     },
     "evmVersion": "petersburg"
-  },
-  "networks": {}
+  }
 }
