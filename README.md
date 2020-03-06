@@ -10,7 +10,7 @@ As of now the staking of the Uniswap LP tokens does not provide you with an ERC2
 
 The objective of the zUnipool contract is to provide the user with an ERC20 token which represents this staking and appreciates in value considering the SNX rewards that are accrued on account of staking.
 
-### Current Status
+## Current Status
 
 This contract has been in internal development and testing for over 2 weeks (at the time of this writing 6 March 2020). Various aspects of this contract has been tested multiple times.  We are also now completing our programmed testing results and will update this repo soon.
 
@@ -18,3 +18,11 @@ However, at this stage, we are _inviting you_ to please review the contract zUni
 
 A full video run down of one of the final use and internal testing (manual though) is available [here](https://www.loom.com/share/53ead589fa584db49c228d6c0352b5f6)
 
+## Key Functions in the zUnipool
+
+- stakeMyShare
+- getMyStakeOut
+- rebalance {preferable to call it with `true`}
+- howMuchHasThisContractStaked
+- howMuchHasThisContractEarned
+- howMuchIszUNIWorth(uint zUNIinWEI)
