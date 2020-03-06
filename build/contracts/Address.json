@@ -598,7 +598,7 @@
                                 "name": "this",
                                 "nodeType": "Identifier",
                                 "overloadedDeclarations": [],
-                                "referencedDeclaration": 2792,
+                                "referencedDeclaration": 2807,
                                 "src": "2684:4:6",
                                 "typeDescriptions": {
                                   "typeIdentifier": "t_contract$_Address_$764",
@@ -709,10 +709,10 @@
                       "name": "require",
                       "nodeType": "Identifier",
                       "overloadedDeclarations": [
-                        2771,
-                        2772
+                        2786,
+                        2787
                       ],
-                      "referencedDeclaration": 2772,
+                      "referencedDeclaration": 2787,
                       "src": "2668:7:6",
                       "typeDescriptions": {
                         "typeIdentifier": "t_function_require_pure$_t_bool_$_t_string_memory_ptr_$returns$__$",
@@ -948,10 +948,10 @@
                       "name": "require",
                       "nodeType": "Identifier",
                       "overloadedDeclarations": [
-                        2771,
-                        2772
+                        2786,
+                        2787
                       ],
-                      "referencedDeclaration": 2772,
+                      "referencedDeclaration": 2787,
                       "src": "2867:7:6",
                       "typeDescriptions": {
                         "typeIdentifier": "t_function_require_pure$_t_bool_$_t_string_memory_ptr_$returns$__$",
