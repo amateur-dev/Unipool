@@ -80,32 +80,31 @@ contract iUniPool {
     /**
      * @dev Returs the amount of LP required to stake / transfer to buy 1 DZLT token
      */
-    // function PriceToStakeNow() external view returns (uint256) {
-    //     if (totalSupply > 0) {
-    //         if (Unipool(UnipoolAddress).earned(address(this)) > 0) {
-    //             uint256 eth4SNX = min_eth(
-    //             (Unipool(UnipoolAddress).earned(address(this))),
-    //             address(SNXUniSwapTokenAddress)
-    //         );
-    //         uint256 eth_reserves = address(sETH_LP_TokenAddress).balance;
-    //         uint256 LP_total_supply = sETH_LP_TokenAddress.totalSupply();
-    //         uint256 LP_for_stake = (eth4SNX.div(2).mul(LP_total_supply)).div(
-    //             eth_reserves
-    //         );
-    //         return
-    //             (LP_for_stake).add(howMuchHasThisContractStaked()).div(
-    //                 totalSupply
-    //             );
-    //         } else {
-    //             return (howMuchHasThisContractStaked()).div(
-    //                 totalSupply);
-    //         }
+    function PricePerToken() external view returns (uint256) {
+        if (totalSupply > 0) {
+            if (
+                Unipool(UnipoolAddress).earned(address(this)) > 0.000005 ether
+            ) {
+                uint256 eth4SNX = min_eth(
+                    (Unipool(UnipoolAddress).earned(address(this))),
+                    address(SNXUniSwapTokenAddress)
+                );
+                uint256 maxTokens = getMaxTokens(
+                    address(sETH_LP_TokenAddress),
+                    sETHTokenAddress,
+                    ((eth4SNX).mul(4985)).div(10000)
+                );
+                uint256 notinalLP = totalLPTokensStaked.add(maxTokens);
+                return (notinalLP / totalSupply);
 
-    //     } else {
-    //         return (1);
-    //     }
+            } else {
+                return (totalLPTokensStaked / totalSupply);
+            }
+        } else {
+            return (1);
+        }
 
-    // }
+    }
 
     // action functions
     function stakeMyShare(uint256 _LPTokenUints) public returns (uint256) {
@@ -313,14 +312,16 @@ contract iUniPool {
             uint256 LPsShortOf = LPs2bRedemeed.sub(LPsInHand);
             Unipool(UnipoolAddress).withdraw(LPsShortOf);
             sETH_LP_TokenAddress.transfer(msg.sender, LPs2bRedemeed);
+            totalLPTokensStaked = totalLPTokensStaked.sub(LPs2bRedemeed);
         } else {
             sETH_LP_TokenAddress.transfer(msg.sender, LPs2bRedemeed);
             uint256 leftOverLPs = sETH_LP_TokenAddress.balanceOf(address(this));
             if (leftOverLPs > 0) {
                 Unipool(UnipoolAddress).stake(leftOverLPs);
+                totalLPTokensStaked = totalLPTokensStaked.add(leftOverLPs);
             }
         }
-        totalLPTokensStaked = totalLPTokensStaked.sub(LPs2bRedemeed);
+
         burn(msg.sender, _tokenQTY);
     }
 
