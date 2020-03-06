@@ -16,5 +16,5 @@ This contract has been in internal development and testing for over 2 weeks (at 
 
 However, at this stage, we are _inviting you_ to please review the contract zUnipool.sol and provide your feedback by creating issues or PR on the code.
 
-A full video run down of one of the final use and internal testing (manual though) is available (here)[https://www.loom.com/share/53ead589fa584db49c228d6c0352b5f6]
+A full video run down of one of the final use and internal testing (manual though) is available [here](https://www.loom.com/share/53ead589fa584db49c228d6c0352b5f6)
 
