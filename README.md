@@ -26,3 +26,9 @@ A full video run down of one of the final use and internal testing (manual thoug
 - howMuchHasThisContractStaked
 - howMuchHasThisContractEarned
 - howMuchIszUNIWorth(uint zUNIinWEI)
+
+## Key workings
+
+The zUnipool contract rebalances the underlying reward of SNX by reinvesting it into LP tokens and re-staking it, everytime a user comes in (ie mints zUNI tokens) or gets out (ie redeems the zUNI tokens).  This is a very critical stage.  Considering the nuances of the Uniswap contract, the volume and that we have limited the trades to be done at only 0.5% slippage max, only when the SNX earned is above a certain amount of threshold, does the rebalancing gets triggered.
+
+
