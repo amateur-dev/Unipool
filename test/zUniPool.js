@@ -85,7 +85,7 @@ contract("zUniPool", async accounts => {
     expect(zUniSupply).to.be.bignumber.equal("0");
   });
 
-  it("Should allow staking", async () => {
+  it("Should allow staking of sETH LP tokens", async () => {
     let LpBalance = await uniswapExchangeContract.methods
       .balanceOf(toWhomToIssue)
       .call();
@@ -97,11 +97,12 @@ contract("zUniPool", async accounts => {
       from: toWhomToIssue
     });
     expect(zUniRecieved.receipt.status).to.be.true;
+
     let stakedInContract = await zUniPoolContract.howMuchHasThisContractStaked();
     expect(stakedInContract).to.bignumber.equal(halfOfBalance);
   });
 
-  it("Should issue the first zUNI tokens at a 1:1 ratio", async () => {
+  it("Should issue the first zUNI tokens at a price of 1 sETH LP = 1 zUNI", async () => {
     let zUniBalance = await zUniPoolContract.balanceOf(toWhomToIssue);
     let zUniPrice = await zUniPoolContract.howMuchIszUNIWorth(zUniBalance);
     let tokenStakedinZUnipool = await zUniPoolContract.totalLPTokensStaked();
@@ -111,28 +112,33 @@ contract("zUniPool", async accounts => {
 
   it("Should earn SNX when sETH LP tokens are staked", async () => {
     let earnedSNXBefore = await zUniPoolContract.howMuchHasThisContractEarned();
+    let timeDeposited = await time.latest();
     await unipoolContract.methods.stake(oneSethLP).send({ from: anotherUser }); //Send 1 sETH LP to Unipool contract to update forked mainnet state
     expect(earnedSNXBefore).to.be.bignumber.equal("0");
 
-    let timeDeposited = await time.latest();
-
-    await timeIncreaseTo(timeDeposited.add(time.duration.hours(3)));
-    let snxBalance = await snxContract.methods
-      .balanceOf("0x48D7f315feDcaD332F68aafa017c7C158BC54760")
-      .call();
-    console.log(web3.utils.fromWei(snxBalance));
+    await timeIncreaseTo(timeDeposited.add(time.duration.hours(1)));
 
     let earnedSNXAfter = await zUniPoolContract.howMuchHasThisContractEarned();
     expect(earnedSNXAfter).to.be.bignumber.above("0");
   });
 
-  // it("Should rebalance by acquiring more sETH LP with earned SNX ", async () => {
-  //   let earnedSNXBefore = await zUniPoolContract.howMuchHasThisContractEarned();
-  //   console.log("EARNED SNX", web3.utils.fromWei(earnedSNXBefore));
-  //   let zUniRecieved = await zUniPoolContract.stakeMyShare(oneSethLP, {
-  //     from: toWhomToIssue
-  //   });
-  //   let earnedSNXAfter = await zUniPoolContract.howMuchHasThisContractEarned();
-  //   console.log("EARNED SNX", web3.utils.fromWei(earnedSNXAfter));
-  // });
+  it("Should rebalance by acquiring more sETH LP with earned SNX ", async () => {
+    let earnedSNXBefore = await zUniPoolContract.howMuchHasThisContractEarned();
+    expect(earnedSNXBefore).to.be.bignumber.above("0");
+
+    let stakedBefore = await zUniPoolContract.howMuchHasThisContractStaked();
+
+    await zUniPoolContract.reBalance(true);
+    
+    let earnedSNXAfter = await zUniPoolContract.howMuchHasThisContractEarned();
+    expect(earnedSNXAfter).to.be.bignumber.equal("0");
+
+    let stakedAfter = await zUniPoolContract.howMuchHasThisContractStaked();
+    expect(stakedAfter).to.be.bignumber.above(stakedBefore);
+  });
+
+  it("Should issue subsequent zUNI tokens at a price where 1 sETH LP < 1 zUNI", async () => {
+    
+
+  });
 });
