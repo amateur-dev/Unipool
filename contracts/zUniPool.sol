@@ -3,13 +3,13 @@ pragma solidity ^0.5.0;
 import "./Unipool.sol";
 import "./iUniswapExchangeContract.sol";
 
-contract iUniPool {
+contract zUniPool {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
     // --- ERC20 Data ---
-    string public constant name = "DZSLT";
-    string public constant symbol = "DZSLT";
+    string public constant name = "zUNI";
+    string public constant symbol = "zUNI";
     string public constant version = "1";
     uint8 public constant decimals = 18;
     uint256 public totalSupply;
@@ -50,7 +50,7 @@ contract iUniPool {
         approve_Addresses();
     }
 
-    function approve_Addresses() internal {
+    function approve_Addresses() public {
         sETH_LP_TokenAddress.approve(UnipoolAddress, ((2**256) - 1));
         SNXTokenAddress.approve(
             address(SNXUniSwapTokenAddress),
@@ -78,34 +78,38 @@ contract iUniPool {
     }
 
     /**
-     * @dev Returs the amount of LP required to stake / transfer to buy 1 DZLT token
+     * @dev Returs the amount of LP redemeemable / to be staked for a given quantity of zUNI
      */
-    // function PriceToStakeNow() external view returns (uint256) {
-    //     if (totalSupply > 0) {
-    //         if (Unipool(UnipoolAddress).earned(address(this)) > 0) {
-    //             uint256 eth4SNX = min_eth(
-    //             (Unipool(UnipoolAddress).earned(address(this))),
-    //             address(SNXUniSwapTokenAddress)
-    //         );
-    //         uint256 eth_reserves = address(sETH_LP_TokenAddress).balance;
-    //         uint256 LP_total_supply = sETH_LP_TokenAddress.totalSupply();
-    //         uint256 LP_for_stake = (eth4SNX.div(2).mul(LP_total_supply)).div(
-    //             eth_reserves
-    //         );
-    //         return
-    //             (LP_for_stake).add(howMuchHasThisContractStaked()).div(
-    //                 totalSupply
-    //             );
-    //         } else {
-    //             return (howMuchHasThisContractStaked()).div(
-    //                 totalSupply);
-    //         }
+    function howMuchIszUNIWorth(uint256 _zUNIinWEI)
+        external
+        view
+        returns (uint256)
+    {
+        if (totalSupply > 0) {
+            if (
+                Unipool(UnipoolAddress).earned(address(this)) > 0.000005 ether
+            ) {
+                uint256 eth4SNX = min_eth(
+                    (Unipool(UnipoolAddress).earned(address(this))),
+                    address(SNXUniSwapTokenAddress)
+                );
+                uint256 maxTokens = getMaxTokens(
+                    address(sETH_LP_TokenAddress),
+                    sETHTokenAddress,
+                    ((eth4SNX).mul(4985)).div(10000)
+                );
+                uint256 notinalLP = totalLPTokensStaked.add(maxTokens);
+                return (((_zUNIinWEI).mul(notinalLP)).div(totalSupply));
+            } else {
+                return (
+                    ((_zUNIinWEI).mul(totalLPTokensStaked)).div(totalSupply)
+                );
+            }
+        } else {
+            return (1);
+        }
 
-    //     } else {
-    //         return (1);
-    //     }
-
-    // }
+    }
 
     // action functions
     function stakeMyShare(uint256 _LPTokenUints) public returns (uint256) {
@@ -129,8 +133,10 @@ contract iUniPool {
         internal
         returns (uint256 tokensIssued)
     {
-        (uint256 totalLPs, uint256 totalDZTs) = getDetails(true);
-        uint256 tokens2bIssued = (howMuchLPStaked.mul(totalDZTs)).div(totalLPs);
+        (uint256 totalLPs, uint256 totalzUNIs) = getDetails(true);
+        uint256 tokens2bIssued = (howMuchLPStaked.mul(totalzUNIs)).div(
+            totalLPs
+        );
         emit internall("howMuchLPStaked", howMuchLPStaked);
         emit internall("tokens2bIssued", tokens2bIssued);
         mint(toWhom, tokens2bIssued);
@@ -139,9 +145,9 @@ contract iUniPool {
 
     function getDetails(bool enter)
         internal
-        returns (uint256 totalLPs, uint256 totalDZTs)
+        returns (uint256 totalLPs, uint256 totalzUNIs)
     {
-        if (totalLPTokensStaked == 0 && totalSupply == 0) {
+        if (totalSupply == 0) {
             emit internall("entering phase 1", 0);
             return (1, 1);
         } else {
@@ -183,7 +189,7 @@ contract iUniPool {
     }
 
     function convertSNXtoLP(uint256 SNXQty)
-        public
+        internal
         returns (uint256 LPReceived)
     {
         uint256 SNX2BcETH = SafeMath.mul(SNXQty, 4985).div(10000);
@@ -267,7 +273,7 @@ contract iUniPool {
     }
 
     function getMaxTokens(address uniExchAdd, IERC20 ERC20Add, uint256 value)
-        public
+        internal
         view
         returns (uint256)
     {
@@ -283,7 +289,7 @@ contract iUniPool {
     }
 
     function min_eth(uint256 tokenQTY, address uniExchAdd)
-        public
+        internal
         view
         returns (uint256)
     {
@@ -294,7 +300,7 @@ contract iUniPool {
     }
 
     function min_tokens(uint256 ethAmt, address uniExchAdd)
-        public
+        internal
         view
         returns (uint256)
     {
@@ -304,24 +310,29 @@ contract iUniPool {
             );
     }
 
-    function getMyStakeOut(uint256 _tokenQTY) public {
+    function getMyStakeOut(uint256 _tokenQTY)
+        public
+        returns (uint256 LPTokensReleased)
+    {
         require(balanceOf[msg.sender] >= _tokenQTY, "Withdrawing qty invalid");
-        (uint256 totalLPs, uint256 totalDZTs) = getDetails(false);
-        uint256 LPs2bRedemeed = (_tokenQTY.mul(totalLPs)).div(totalDZTs);
+        (uint256 totalLPs, uint256 totalzUNIs) = getDetails(false);
+        uint256 LPs2bRedemeed = (_tokenQTY.mul(totalLPs)).div(totalzUNIs);
         uint256 LPsInHand = sETH_LP_TokenAddress.balanceOf(address(this));
         if (LPs2bRedemeed > LPsInHand) {
             uint256 LPsShortOf = LPs2bRedemeed.sub(LPsInHand);
             Unipool(UnipoolAddress).withdraw(LPsShortOf);
             sETH_LP_TokenAddress.transfer(msg.sender, LPs2bRedemeed);
+            totalLPTokensStaked = totalLPTokensStaked.sub(LPs2bRedemeed);
         } else {
             sETH_LP_TokenAddress.transfer(msg.sender, LPs2bRedemeed);
             uint256 leftOverLPs = sETH_LP_TokenAddress.balanceOf(address(this));
             if (leftOverLPs > 0) {
                 Unipool(UnipoolAddress).stake(leftOverLPs);
+                totalLPTokensStaked = totalLPTokensStaked.add(leftOverLPs);
             }
         }
-        totalLPTokensStaked = totalLPTokensStaked.sub(LPs2bRedemeed);
         burn(msg.sender, _tokenQTY);
+        return (LPs2bRedemeed);
     }
 
     function mint(address account, uint256 amount) internal {
