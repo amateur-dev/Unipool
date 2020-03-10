@@ -253,7 +253,7 @@ contract("zUniPool", async accounts => {
       .balanceOf(toWhomToIssue)
       .call();
 
-      console.log(web3.utils.fromWei(entryLpBalance))
+      console.log('entryLpBalance', web3.utils.fromWei(entryLpBalance))
     await zUniPoolContract.stakeMyShare(entryLpBalance, {
       from: toWhomToIssue
     });
@@ -261,15 +261,16 @@ contract("zUniPool", async accounts => {
     await helper.advanceTimeAndBlock(testInterval);
 
     // await zUniPoolContract.reBalance(true);
+    zUniBalance = await zUniPoolContract.balanceOf(toWhomToIssue)
 
-    await zUniPoolContract.getMyStakeOut(entryLpBalance, {
+    await zUniPoolContract.getMyStakeOut(zUniBalance, {
       from: toWhomToIssue
     });
 
     let exitLpBalance = await uniswapExchangeContract.methods
     .balanceOf(toWhomToIssue)
     .call();
-    console.log(web3.utils.fromWei(exitLpBalance))
+    console.log('exitLpBalance', web3.utils.fromWei(exitLpBalance))
 
     expect(exitLpBalance).to.be.bignumber.above(entryLpBalance)
   });
