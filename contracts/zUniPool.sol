@@ -18,7 +18,7 @@ contract zUniPool {
      - Need to check impact of Uniswap V2,  will we need to deploy a v2 or new version of DZSLT
      due to changes in sETH_LP_TokenAddress and potentially a new version of SNXUniswapTokenAddress?
     */
-    address public constant UnipoolAddress = 0x48D7f315feDcaD332F68aafa017c7C158BC54760;
+    address public UnipoolAddress;
     IERC20 public constant sETHTokenAddress = IERC20(
         0x5e74C9036fb86BD7eCdcb084a0673EFc32eA31cb
     );
@@ -46,7 +46,8 @@ contract zUniPool {
     // testing events
     event internall(string, uint256);
 
-    constructor() public {
+    constructor(address _UniPoolAddress) public {
+        UnipoolAddress = _UniPoolAddress;
         approve_Addresses();
     }
 

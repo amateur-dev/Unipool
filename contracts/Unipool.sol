@@ -8,7 +8,6 @@ import "./IRewardDistributionRecipient.sol";
 
 contract LPTokenWrapper {
     using SafeMath for uint256;
-    using SafeERC20 for IERC20;
 
     IERC20 public uni = IERC20(0xe9Cf7887b93150D4F2Da7dFc6D502B216438F244);
 
@@ -26,13 +25,13 @@ contract LPTokenWrapper {
     function stake(uint256 amount) public {
         _totalSupply = _totalSupply.add(amount);
         _balances[msg.sender] = _balances[msg.sender].add(amount);
-        uni.safeTransferFrom(msg.sender, address(this), amount);
+        uni.transferFrom(msg.sender, address(this), amount);
     }
 
     function withdraw(uint256 amount) public {
         _totalSupply = _totalSupply.sub(amount);
         _balances[msg.sender] = _balances[msg.sender].sub(amount);
-        uni.safeTransfer(msg.sender, amount);
+        uni.transfer(msg.sender, amount);
     }
 }
 
@@ -104,7 +103,7 @@ contract Unipool is LPTokenWrapper, IRewardDistributionRecipient {
         uint256 reward = earned(msg.sender);
         if (reward > 0) {
             rewards[msg.sender] = 0;
-            snx.safeTransfer(msg.sender, reward);
+            snx.transfer(msg.sender, reward);
             emit RewardPaid(msg.sender, reward);
         }
     }
