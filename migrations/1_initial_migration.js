@@ -1,9 +1,11 @@
 const Migrations = artifacts.require('./Migrations.sol');
+const Unipool = artifacts.require('./Unipool.sol');
 const zUniPool = artifacts.require('./zUniPool.sol');
 
 
-module.exports = function (deployer) {
-    deployer.deploy(Migrations);
-    deployer.deploy(zUniPool);
 
+module.exports = async function (deployer) {
+    await deployer.deploy(Migrations);
+    await deployer.deploy(Unipool);
+    await deployer.deploy(zUniPool, Unipool.address);
 };
