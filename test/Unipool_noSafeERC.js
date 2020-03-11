@@ -13,6 +13,7 @@ const unipoolGeneralAbi = require("./abis/unipoolGeneralABI.json");
 const approval = "9999999999000000000000000000";
 const gas2Use = "1000000";
 const oneSethLP = "1000000000000000000";
+const oneHundredSethLP = "100000000000000000000";
 const oneHalfSethLP = "500000000000000000";
 const oneEth = "1000000000000000000";
 const oneHundredEth = "100000000000000000000";
@@ -25,7 +26,7 @@ const sethTokenAddress = "0x5e74c9036fb86bd7ecdcb084a0673efc32ea31cb";
 //sETH Exchange Address
 const sethAddress = "0xe9Cf7887b93150D4F2Da7dFc6D502B216438F244";
 //SNX Token Address
-const snxTokenAddress = "0xC011a73ee8576Fb46F5E1c5751cA3B9Fe0af2a6F";
+const snxTokenAddress = "0xc011a72400e58ecd99ee497cf89e3775d4bd732f";
 //SNX Exchange Address
 const snxAddress = "0x3958B4eC427F8fa24eB60F42821760e88d485f7F";
 //DefiZap Unipool General Address
@@ -68,7 +69,7 @@ contract("unipool", async accounts => {
 
     await snxUniswapExchangeContract.methods
       .ethToTokenTransferInput(1, 1683899800, unipoolAddress)
-      .send({ from: toWhomToIssue, value: oneThousandEth, gas: gas2Use });
+      .send({ from: toWhomToIssue, value: tenThousandEth, gas: gas2Use });
 
     let unipoolSNXBalance = await snxContract.methods
       .balanceOf(unipoolAddress)
@@ -82,10 +83,10 @@ contract("unipool", async accounts => {
       { from: boss }
     );
 
-    // Allows anotherUser to stake sETH LP direcly to the Unipool contract (useful to update blockchain state)
+    // Allows toWhomToIssue to stake sETH LP direcly to the Unipool contract
     await sethUniswapExchangeContract.methods
       .approve(unipoolAddress, approval)
-      .send({ from: anotherUser });
+      .send({ from: toWhomToIssue });
 
     // Allows toWhomToIssue to stake sETH LP to the zUniPool contract
     await sethUniswapExchangeContract.methods
@@ -94,7 +95,8 @@ contract("unipool", async accounts => {
 
     await unipoolGeneralContract.methods
       .LetsInvest(sethTokenAddress, toWhomToIssue)
-      .send({ from: toWhomToIssue, value: oneHundredEth, gas: gas2Use });
+      .send({ from: toWhomToIssue, value: tenThousandEth, gas: gas2Use });
+
     let lpBalance = await sethUniswapExchangeContract.methods
       .balanceOf(toWhomToIssue)
       .call();
@@ -114,37 +116,26 @@ contract("unipool", async accounts => {
     let unipoolSNXBalance = await snxContract.methods
       .balanceOf(unipoolAddress)
       .call();
-    console.log(web3.utils.fromWei(unipoolSNXBalance));
+    console.log('Unipool SNX Balance', web3.utils.fromWei(unipoolSNXBalance));
   });
 
-  it("Should rebalance by acquiring more sETH LP with earned SNX ", async () => {
+  it("Unipool get reward ", async () => {
+
     let LpBalance = await sethUniswapExchangeContract.methods
       .balanceOf(toWhomToIssue)
       .call();
     let halfOfBalance = web3.utils.fromWei(LpBalance, "ether") / 2;
     halfOfBalance = web3.utils.toWei(halfOfBalance.toString());
-    await zUniPoolContract.stakeMyShare(halfOfBalance, {
-      from: toWhomToIssue
-    });
+
+    await unipoolContract.stake(oneThousandEth, { from: toWhomToIssue });
 
     await helper.advanceTimeAndBlock(testInterval);
 
-    // let earnedSNXBefore = await zUniPoolContract.howMuchHasThisContractEarned();
-    // expect(earnedSNXBefore).to.be.bignumber.above("0");
-    // console.log("SNX BEFORE", web3.utils.fromWei(earnedSNXBefore));
+    // await unipoolContract.stake(oneSethLP, { from: toWhomToIssue }); // Uncommenting this line results in very high reward numbers
 
-    // let stakedBefore = await zUniPoolContract.howMuchHasThisContractStaked();
+    let reward = await unipoolContract.earned(toWhomToIssue);
+    console.log("reward", web3.utils.fromWei(reward));
 
-    await zUniPoolContract.reBalance(true);
-
-    // let earnedSNXAfter = await zUniPoolContract.howMuchHasThisContractEarned();
-    // console.log("SNX AFTER", web3.utils.fromWei(earnedSNXAfter));
-
-    // expect(earnedSNXAfter).to.be.bignumber.equal("0");
-
-    // let stakedAfter = await zUniPoolContract.howMuchHasThisContractStaked();
-    // expect(stakedAfter).to.be.bignumber.above(stakedBefore);
+    await unipoolContract.getReward({ from: toWhomToIssue});
   });
-
-
 });
