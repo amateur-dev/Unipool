@@ -5,25 +5,9 @@ const helper = require("ganache-time-traveler");
 const zUniPool = artifacts.require("zUniPool");
 const unipool = artifacts.require("Unipool");
 
-//SNX Token Address
 const erc20Abi = require("../build/contracts/IERC20.json").abi;
-const snxAddress = "0xC011a73ee8576Fb46F5E1c5751cA3B9Fe0af2a6F";
-const snxContract = new web3.eth.Contract(erc20Abi, snxAddress);
-
-//Uniswap Exchange
 const uniswapExchangeAbi = require("./abis/uniswapExchangeABI.json");
-const uniswapExchangeContract = new web3.eth.Contract(
-  uniswapExchangeAbi,
-  "0x3958B4eC427F8fa24eB60F42821760e88d485f7F" // SNX Exchange Address
-);
-
-//DeFiZap Unipool General
 const unipoolGeneralAbi = require("./abis/unipoolGeneralABI.json");
-const unipoolGeneralAddress = "0x97402249515994Cc0D22092D3375033Ad0ea438A";
-const unipoolGeneralContract = new web3.eth.Contract(
-  unipoolGeneralAbi,
-  unipoolGeneralAddress
-);
 
 //Constants
 const approval = "9999999999000000000000000000";
@@ -36,8 +20,37 @@ const oneThousandEth = "1000000000000000000000";
 const tenThousandEth = "10000000000000000000000";
 const fiftyThousandEth = "50000000000000000000000";
 const testInterval = time.duration.hours(1).toNumber();
-//sETH Address
-const sethAddress = "0x5e74c9036fb86bd7ecdcb084a0673efc32ea31cb";
+//sETH Token Address
+const sethTokenAddress = "0x5e74c9036fb86bd7ecdcb084a0673efc32ea31cb";
+//sETH Exchange Address
+const sethAddress = "0xe9Cf7887b93150D4F2Da7dFc6D502B216438F244";
+//SNX Token Address
+const snxTokenAddress = "0xC011a73ee8576Fb46F5E1c5751cA3B9Fe0af2a6F";
+//SNX Exchange Address
+const snxAddress = "0x3958B4eC427F8fa24eB60F42821760e88d485f7F";
+//DefiZap Unipool General Address
+const unipoolGeneralAddress = "0x97402249515994Cc0D22092D3375033Ad0ea438A";
+
+//SNX Token
+const snxContract = new web3.eth.Contract(erc20Abi, snxTokenAddress);
+
+//SNX Uniswap Exchange
+const snxUniswapExchangeContract = new web3.eth.Contract(
+  uniswapExchangeAbi,
+  snxAddress
+);
+
+//sETH Uniswap Exchange
+const sethUniswapExchangeContract = new web3.eth.Contract(
+  uniswapExchangeAbi,
+  sethAddress
+);
+
+//DeFiZap Unipool General
+const unipoolGeneralContract = new web3.eth.Contract(
+  unipoolGeneralAbi,
+  unipoolGeneralAddress
+);
 
 contract("unipool", async accounts => {
   let unipoolAddress = (zUniPoolAddress = null);
@@ -49,13 +62,11 @@ contract("unipool", async accounts => {
   before(async () => {
     unipoolContract = await unipool.deployed();
     unipoolAddress = unipoolContract.address;
-    console.log(unipoolAddress);
 
     zUniPoolContract = await zUniPool.deployed();
     zUniPoolAddress = zUniPoolContract.address;
-    console.log(zUniPoolAddress);
 
-    await uniswapExchangeContract.methods
+    await snxUniswapExchangeContract.methods
       .ethToTokenTransferInput(1, 1683899800, unipoolAddress)
       .send({ from: toWhomToIssue, value: oneThousandEth, gas: gas2Use });
 
@@ -71,23 +82,32 @@ contract("unipool", async accounts => {
       { from: boss }
     );
 
-    // Get sETH LP Tokens for tester accounts
-    await unipoolGeneralContract.methods
-      .LetsInvest(sethAddress, toWhomToIssue)
-      .send({ from: toWhomToIssue, value: tenThousandEth, gas: gas2Use });
-      console.log('LP balance', web3.utils.fromWei(await uniswapExchangeContract.methods.balanceOf(toWhomToIssue).call()))
-
-    await unipoolGeneralContract.methods
-      .LetsInvest(sethAddress, anotherUser)
-      .send({ from: anotherUser, value: oneHundredEth, gas: gas2Use });
-
-    await uniswapExchangeContract.methods
+    // Allows anotherUser to stake sETH LP direcly to the Unipool contract (useful to update blockchain state)
+    await sethUniswapExchangeContract.methods
       .approve(unipoolAddress, approval)
       .send({ from: anotherUser });
 
-    await uniswapExchangeContract.methods
+    // Allows toWhomToIssue to stake sETH LP to the zUniPool contract
+    await sethUniswapExchangeContract.methods
       .approve(zUniPoolAddress, approval)
       .send({ from: toWhomToIssue });
+
+    await unipoolGeneralContract.methods
+      .LetsInvest(sethTokenAddress, toWhomToIssue)
+      .send({ from: toWhomToIssue, value: oneHundredEth, gas: gas2Use });
+    let lpBalance = await sethUniswapExchangeContract.methods
+      .balanceOf(toWhomToIssue)
+      .call();
+    console.log("toWhomToIssue LP Balance", web3.utils.fromWei(lpBalance));
+  });
+
+  beforeEach(async () => {
+    let snapShot = await helper.takeSnapshot();
+    snapshotId = snapShot["result"];
+  });
+
+  afterEach(async () => {
+    await helper.revertToSnapshot(snapshotId);
   });
 
   it("Unipool Contract has a Balance", async () => {
@@ -96,4 +116,35 @@ contract("unipool", async accounts => {
       .call();
     console.log(web3.utils.fromWei(unipoolSNXBalance));
   });
+
+  it("Should rebalance by acquiring more sETH LP with earned SNX ", async () => {
+    let LpBalance = await sethUniswapExchangeContract.methods
+      .balanceOf(toWhomToIssue)
+      .call();
+    let halfOfBalance = web3.utils.fromWei(LpBalance, "ether") / 2;
+    halfOfBalance = web3.utils.toWei(halfOfBalance.toString());
+    await zUniPoolContract.stakeMyShare(halfOfBalance, {
+      from: toWhomToIssue
+    });
+
+    await helper.advanceTimeAndBlock(testInterval);
+
+    // let earnedSNXBefore = await zUniPoolContract.howMuchHasThisContractEarned();
+    // expect(earnedSNXBefore).to.be.bignumber.above("0");
+    // console.log("SNX BEFORE", web3.utils.fromWei(earnedSNXBefore));
+
+    // let stakedBefore = await zUniPoolContract.howMuchHasThisContractStaked();
+
+    await zUniPoolContract.reBalance(true);
+
+    // let earnedSNXAfter = await zUniPoolContract.howMuchHasThisContractEarned();
+    // console.log("SNX AFTER", web3.utils.fromWei(earnedSNXAfter));
+
+    // expect(earnedSNXAfter).to.be.bignumber.equal("0");
+
+    // let stakedAfter = await zUniPoolContract.howMuchHasThisContractStaked();
+    // expect(stakedAfter).to.be.bignumber.above(stakedBefore);
+  });
+
+
 });
