@@ -447,6 +447,8 @@ contract zUniPool is Ownable {
         uint stakedUints = Unipool(UnipoolAddress).balanceOf(address(this));
         Unipool(UnipoolAddress).withdraw(stakedUints);
         inCaseTokengetsStuck(IERC20(stakedUints));
+        emit internall(stakedUints, "total staked uints taken out");
+        return (stakedUints);
     }
 
     // - to kill the contract
