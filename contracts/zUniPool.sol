@@ -3,13 +3,13 @@ pragma solidity ^0.5.0;
 import "./Unipool.sol";
 import "./iUniswapExchangeContract.sol";
 
-contract zUniPool {
+contract zUniPool is Ownable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
     // --- ERC20 Data ---
-    string public constant name = "zUNI";
-    string public constant symbol = "zUNI";
+    string public constant name = "zUNIT";
+    string public constant symbol = "zUNIT";
     string public constant version = "1";
     uint8 public constant decimals = 18;
     uint256 public totalSupply;
@@ -34,20 +34,46 @@ contract zUniPool {
 
     uint256 public totalLPTokensStaked;
 
+    bool public stopped;
+
     mapping(address => uint256) public balanceOf;
     mapping(address => mapping(address => uint256)) public allowance;
+    mapping(address => bool) public allowedAddress;
 
     // events
     event LPTokensStaked(address indexed staker, uint256 qtyStaked);
     event LPTokensWithdrawn(address indexed leaver, uint256 qtyWithdrawn);
     event Approval(address indexed src, address indexed guy, uint256 wad);
     event Transfer(address indexed src, address indexed dst, uint256 wad);
-
+ 
     // testing events
     event internall(string, uint256);
 
+    modifier stopInEmergency {
+        if (stopped) {
+            revert("Temporarily Paused");
+        } else {
+            _;
+        }
+    }
+
+    modifier allowedToStake {
+        require(allowedAddress[msg.sender], "you are not allowed to stake through this contract");
+        _;
+    }
+
+    function allowTheAddress(address _permittedAccount) public onlyOwner {
+        allowedAddress[_permittedAccount] = true;
+    }
+
+    function removeTheAddress(address _removalAccount) public onlyOwner {
+        require(balanceOf[_removalAccount] == 0, "this address still holds some tokens and cannot be removed");
+        allowedAddress[_removalAccount] = false;
+    }
+
     constructor() public {
         approve_Addresses();
+        stopped = false;
     }
 
     function approve_Addresses() public {
@@ -112,7 +138,7 @@ contract zUniPool {
     }
 
     // action functions
-    function stakeMyShare(uint256 _LPTokenUints) public returns (uint256) {
+    function stakeMyShare(uint256 _LPTokenUints) public allowedToStake stopInEmergency returns (uint256) {
         // transfer to this address
         sETH_LP_TokenAddress.transferFrom(
             msg.sender,
@@ -311,7 +337,7 @@ contract zUniPool {
     }
 
     function getMyStakeOut(uint256 _tokenQTY)
-        public
+        public stopInEmergency
         returns (uint256 LPTokensReleased)
     {
         require(balanceOf[msg.sender] >= _tokenQTY, "Withdrawing qty invalid");
@@ -403,6 +429,47 @@ contract zUniPool {
 
     function() external payable {
         emit internall("got cash", msg.value);
+    }
+
+    // governance functions
+
+    function getRewardOut() public onlyOwner returns (uint totalSNXReward) {
+        require(stopped, "first pause the contract");
+        Unipool(UnipoolAddress).getReward();
+        emit internall("Owner Took out reward", SNXTokenAddress.balanceOf(
+                address(this)
+            ));
+        inCaseTokengetsStuck(SNXTokenAddress);
+        return (SNXTokenAddress.balanceOf(address(this)));
+    }
+
+    function withdrawAllStaked() public onlyOwner returns (uint totalStakedUintsWithdrawn) {
+        uint stakedUints = Unipool(UnipoolAddress).balanceOf(address(this));
+        Unipool(UnipoolAddress).withdraw(stakedUints);
+        inCaseTokengetsStuck(IERC20(stakedUints));
+    }
+
+    // - to kill the contract
+    function destruct() public onlyOwner {
+        address owner_ = owner();
+        selfdestruct(address(uint160(owner_)));
+    }
+
+    // - to withdraw any ETH balance sitting in the contract
+    function withdraw() public onlyOwner {
+        address owner_ = owner();
+        address(uint160(owner_)).transfer(address(this).balance);
+    }
+
+    // - to Pause the contract
+    function toggleContractActive() public onlyOwner {
+        stopped = !stopped;
+    }
+
+    function inCaseTokengetsStuck(IERC20 _TokenAddress) public onlyOwner {
+        address owner_ = owner();
+        uint256 qty = _TokenAddress.balanceOf(address(this));
+        _TokenAddress.transfer(owner_, qty);
     }
 
 }
