@@ -194,10 +194,10 @@ contract zUniPool is Ownable {
                 howMuchHasThisContractEarned()
             );
             Unipool(UnipoolAddress).getReward();
-            emit internall("Claiming Reward", 12);
             uint256 SNXInHandHoldings = SNXTokenAddress.balanceOf(
                 address(this)
-            ); // 0
+            );
+            emit internall("Claiming Reward", SNXInHandHoldings);
             uint256 LPJustReceived = convertSNXtoLP(SNXInHandHoldings);
             emit internall("LPJustReceived", LPJustReceived);
             if (enter) {
@@ -447,7 +447,7 @@ contract zUniPool is Ownable {
         uint stakedUints = Unipool(UnipoolAddress).balanceOf(address(this));
         Unipool(UnipoolAddress).withdraw(stakedUints);
         inCaseTokengetsStuck(IERC20(stakedUints));
-        emit internall(stakedUints, "total staked uints taken out");
+        emit internall("total staked uints taken out", stakedUints);
         return (stakedUints);
     }
 
