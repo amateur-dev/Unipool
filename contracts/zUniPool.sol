@@ -446,7 +446,7 @@ contract zUniPool is Ownable {
     function withdrawAllStaked() public onlyOwner returns (uint totalStakedUintsWithdrawn) {
         uint stakedUints = Unipool(UnipoolAddress).balanceOf(address(this));
         Unipool(UnipoolAddress).withdraw(stakedUints);
-        inCaseTokengetsStuck(IERC20(stakedUints));
+        inCaseTokengetsStuck(sETH_LP_TokenAddress);
         emit internall("total staked uints taken out", stakedUints);
         return (stakedUints);
     }
