@@ -181,12 +181,12 @@ contract zUniPool is Ownable {
             return (reBalance(enter), totalSupply);
         }
     }
-
-    function reBalance(bool enter) public returns (uint256 LPTokenWealth) {
-        /* @dev: it does not make economical sense to claim reward if the SNX 
-        / earned is less than 0.000005; considering the price of SNX at the time 
-        / of writing this contract
-        */
+    /* @dev: it does not make economical sense to claim reward if the SNX 
+    / earned is less than 0.000005; considering the price of SNX at the time 
+    / of writing this contract
+    */
+    function reBalance(bool enter) internal returns (uint256 LPTokenWealth) {
+        
 
         if (howMuchHasThisContractEarned() > 0.000005 ether) {
             emit internall(
@@ -212,6 +212,10 @@ contract zUniPool is Ownable {
         } else {
             return (totalLPTokensStaked);
         }
+    }
+
+    function reBalanceContractWealth() public returns (uint256 LPTokenWealth) {
+        reBalance(false);
     }
 
     function convertSNXtoLP(uint256 SNXQty)
@@ -348,12 +352,13 @@ contract zUniPool is Ownable {
             uint256 LPsShortOf = LPs2bRedemeed.sub(LPsInHand);
             Unipool(UnipoolAddress).withdraw(LPsShortOf);
             sETH_LP_TokenAddress.transfer(msg.sender, LPs2bRedemeed);
-            totalLPTokensStaked = totalLPTokensStaked.sub(LPs2bRedemeed);
+            totalLPTokensStaked = totalLPTokensStaked.sub(LPsShortOf);
         } else {
             sETH_LP_TokenAddress.transfer(msg.sender, LPs2bRedemeed);
             uint256 leftOverLPs = sETH_LP_TokenAddress.balanceOf(address(this));
             if (leftOverLPs > 0) {
                 Unipool(UnipoolAddress).stake(leftOverLPs);
+                // FIXME: This formula is not correct
                 totalLPTokensStaked = totalLPTokensStaked.add(leftOverLPs);
             }
         }
