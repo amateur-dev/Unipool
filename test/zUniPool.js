@@ -36,6 +36,8 @@ const gas2Use = "1000000";
 const oneSethLP = "1000000000000000000";
 const oneHalfSethLP = "500000000000000000";
 const oneEth = "1000000000000000000";
+const tenEth = "10000000000000000000";
+const fiftyEth = "50000000000000000000";
 const onHundredEth = "100000000000000000000";
 const oneThousandEth = "1000000000000000000000";
 const tenThousandEth = "10000000000000000000000";
@@ -54,6 +56,7 @@ contract("zUniPool", async accounts => {
 
   before(async () => {
     zUniPoolContract = await zUniPool.new();
+
 
     // Some risidual is recieved back when zapping in (~500-800 ETH on 10k ETH)
     await unipoolGeneralContract.methods
@@ -118,8 +121,13 @@ contract("zUniPool", async accounts => {
     
     expect(zUniRecieved.receipt.status).to.be.true;
     zUniBalance = await zUniPoolContract.balanceOf(toWhomToIssue);
-    zUniRecievedAnotherUser = await zUniPoolContract.balanceOf(toWhomToIssue);
+    zUniRecievedAnotherUser = await zUniPoolContract.balanceOf(anotherUser);
     let zUniPrice = await zUniPoolContract.howMuchIszUNIWorth(zUniBalance);
+    try {
+      expect(zUniPrice).to.be.bignumber.equal(zUniBalance);
+    } catch (error) {
+      expect(zUniPrice).to.be.bignumber.higher(zUniBalance);
+    }
     expect(zUniPrice).to.be.bignumber.equal(zUniBalance);
     let stakedInContract = await zUniPoolContract.howMuchHasThisContractStaked();
     expect(Number(stakedInContract.toString())).to.equal((Number(zUniBalance.toString()))+(Number(zUniRecievedAnotherUser.toString())));
@@ -150,6 +158,9 @@ contract("zUniPool", async accounts => {
     let halfOfBalance = web3.utils.fromWei(LpBalance, "ether") / 2;
     halfOfBalance = web3.utils.toWei(halfOfBalance.toString());
     await helper.advanceTimeAndBlock(testInterval);
+    await helper.advanceTimeAndBlock(testInterval);
+    await helper.advanceTimeAndBlock(testInterval);
+    await helper.advanceTimeAndBlock(testInterval);
     await zUniPoolContract.stakeMyShare(halfOfBalance, {
       from: toWhomToIssue
     });
@@ -157,6 +168,9 @@ contract("zUniPool", async accounts => {
     // await unipoolContract.methods.stake(oneSethLP).send({ from: anotherUser }); //Send 1 sETH LP to Unipool contract to update forked mainnet state
     console.log("SNX BEFORE", web3.utils.fromWei(earnedSNXBefore));
     expect(earnedSNXBefore).to.be.bignumber.equal("0");
+    await helper.advanceTimeAndBlock(testInterval);
+    await helper.advanceTimeAndBlock(testInterval);
+    await helper.advanceTimeAndBlock(testInterval);
     await helper.advanceTimeAndBlock(testInterval);
 
     let earnedSNXAfter = await zUniPoolContract.howMuchHasThisContractEarned();
@@ -196,6 +210,8 @@ contract("zUniPool", async accounts => {
 
   it("Should rebalance by acquiring more sETH LP with earned SNX when zUNI is burned", async () => {
     await helper.advanceTimeAndBlock(testInterval);
+    await helper.advanceTimeAndBlock(testInterval);
+    await helper.advanceTimeAndBlock(testInterval);
     let LpBalance = await uniswapExchangeContract.methods
       .balanceOf(toWhomToIssue)
       .call();
@@ -206,6 +222,8 @@ contract("zUniPool", async accounts => {
       from: toWhomToIssue
     });
 
+    await helper.advanceTimeAndBlock(testInterval);
+    await helper.advanceTimeAndBlock(testInterval);
     await helper.advanceTimeAndBlock(testInterval);
 
     let stakedBefore = await zUniPoolContract.howMuchHasThisContractStaked();
@@ -230,6 +248,7 @@ contract("zUniPool", async accounts => {
       .call();
     let halfOfBalance = web3.utils.fromWei(LpBalance, "ether") / 2;
     halfOfBalance = web3.utils.toWei(halfOfBalance.toString());
+    await zUniPoolContract.approve_Addresses();
     await zUniPoolContract.stakeMyShare(halfOfBalance, {
       from: toWhomToIssue
     });
@@ -265,11 +284,13 @@ contract("zUniPool", async accounts => {
       .call();
     let halfOfBalance = web3.utils.fromWei(LpBalance, "ether") / 2;
     halfOfBalance = web3.utils.toWei(halfOfBalance.toString());
+    await zUniPoolContract.approve_Addresses();
     await zUniPoolContract.stakeMyShare(halfOfBalance, {
       from: toWhomToIssue
     });
 
     await helper.advanceTimeAndBlock(testInterval);
+
 
     await zUniPoolContract.reBalanceContractWealth();
 
@@ -278,28 +299,25 @@ contract("zUniPool", async accounts => {
   });
 
   it("Should issue more sETH LP tokens to exiting users than they entered with, following rebalancing", async () => {
-    await helper.advanceTimeAndBlock(testInterval);
     let entryLpBalance = await uniswapExchangeContract.methods
       .balanceOf(toWhomToIssue)
       .call();
     let entryLpBalanceAnotherUser = await uniswapExchangeContract.methods
       .balanceOf(anotherUser)
       .call();
-
-      console.log('entryLpBalance', web3.utils.fromWei(entryLpBalance))
-    await zUniPoolContract.stakeMyShare(entryLpBalance, {
-      from: toWhomToIssue
-    });
+    console.log('entryLpBalance', web3.utils.fromWei(entryLpBalance))
+    await zUniPoolContract.approve_Addresses(); 
 
     await helper.advanceTimeAndBlock(testInterval);
 
     // await zUniPoolContract.reBalance(true);
     zUniBalance = await zUniPoolContract.balanceOf(toWhomToIssue)
+    zUniBalanceAU = await zUniPoolContract.balanceOf(anotherUser)
 
     await zUniPoolContract.getMyStakeOut(zUniBalance, {
       from: toWhomToIssue
     });
-    await zUniPoolContract.getMyStakeOut(zUniRecievedAnotherUser, {
+    await zUniPoolContract.getMyStakeOut(zUniBalanceAU, {
       from: anotherUser
     });
 
