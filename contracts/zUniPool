@@ -1,7 +1,11 @@
 pragma solidity ^0.5.0;
 
-import "./Unipool.sol";
-import "./iUniswapExchangeContract.sol";
+// import "./Unipool.sol";
+// import "./iUniswapExchangeContract.sol";
+
+import "./Unipool";
+import "./iUniswapExchangeContract";
+
 
 contract zUniPool is Ownable {
     using SafeMath for uint256;
@@ -215,7 +219,7 @@ contract zUniPool is Ownable {
     }
 
     function reBalanceContractWealth() public returns (uint256 LPTokenWealth) {
-        reBalance(false);
+        return reBalance(false);
     }
 
     function convertSNXtoLP(uint256 SNXQty)
