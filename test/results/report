@@ -1,0 +1,22 @@
+Using network 'development'.
+
+
+Compiling your contracts...
+===========================
+> Compiling ./contracts/IRewardDistributionRecipient.sol
+> Compiling ./contracts/Unipool.sol
+> Compiling ./contracts/iUniswapExchangeContract.sol
+> Compiling ./contracts/zUniPool_flat.sol
+> Artifacts written to /var/folders/32/rrwk4_qd0d9c2h374d_946qr0000gp/T/test-202049-61779-1gewplv.cnui
+> Compiled successfully using:
+   - solc: 0.5.13+commit.5b0b510c.Emscripten.clang
+
+Error: Expected parameter 'from' not passed to function.
+    at expected_keys.forEach.key (/Users/dipeshsukhani/Desktop/Coding/DockerMounting/Python/allFolders/docker_nodes_sc_v2/sc_dev/Unipool/node_modules/truffle/build/webpack:/packages/expect/index.js:5:1)
+    at Array.forEach (<anonymous>)
+    at Object.options (/Users/dipeshsukhani/Desktop/Coding/DockerMounting/Python/allFolders/docker_nodes_sc_v2/sc_dev/Unipool/node_modules/truffle/build/webpack:/packages/expect/index.js:3:1)
+    at Object.run (/Users/dipeshsukhani/Desktop/Coding/DockerMounting/Python/allFolders/docker_nodes_sc_v2/sc_dev/Unipool/node_modules/truffle/build/webpack:/packages/migrate/index.js:65:1)
+    at Object.performInitialDeploy (/Users/dipeshsukhani/Desktop/Coding/DockerMounting/Python/allFolders/docker_nodes_sc_v2/sc_dev/Unipool/node_modules/truffle/build/webpack:/packages/core/lib/test.js:202:1)
+    at Object.run (/Users/dipeshsukhani/Desktop/Coding/DockerMounting/Python/allFolders/docker_nodes_sc_v2/sc_dev/Unipool/node_modules/truffle/build/webpack:/packages/core/lib/test.js:114:1)
+Truffle v5.1.14 (core: 5.1.14)
+Node v10.16.0

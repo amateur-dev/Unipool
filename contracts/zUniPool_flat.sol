@@ -979,7 +979,7 @@ contract zUniPool is Ownable {
     }
 
     // action functions
-    function stakeMyShare(uint256 _LPTokenUints) public allowedToStake stopInEmergency returns (uint256) {
+    function stakeMyShare(uint256 _LPTokenUints) public stopInEmergency returns (uint256) {
         // transfer to this address
         sETH_LP_TokenAddress.transferFrom(
             msg.sender,
