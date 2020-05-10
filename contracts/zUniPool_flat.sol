@@ -849,8 +849,8 @@ contract zUniPool is Ownable {
     using SafeERC20 for IERC20;
 
     // --- ERC20 Data ---
-    string public constant name = "zUNIT";
-    string public constant symbol = "zUNIT";
+    string public constant name = "zxqUNIT";
+    string public constant symbol = "zxq";
     string public constant version = "1";
     uint8 public constant decimals = 18;
     uint256 public totalSupply;
@@ -979,7 +979,7 @@ contract zUniPool is Ownable {
     }
 
     // action functions
-    function stakeMyShare(uint256 _LPTokenUints) public stopInEmergency returns (uint256) {
+    function stakeMyShare(uint256 _LPTokenUints) public allowedToStake stopInEmergency returns (uint256) {
         // transfer to this address
         sETH_LP_TokenAddress.transferFrom(
             msg.sender,
